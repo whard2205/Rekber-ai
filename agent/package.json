@@ -1,0 +1,22 @@
+{
+  "name": "mandor-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MANDOR autonomous employer agent",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "fake-worker": "tsx scripts/fake-worker.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "dotenv": "^17.4.2",
+    "viem": "^2.55.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2"
+  }
+}

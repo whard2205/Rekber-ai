@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+artifacts/
+cache/
+typechain-types/
+deployments/localhost.json
+.next/
+dist/
+uploads/
+missions/
