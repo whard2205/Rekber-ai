@@ -10,3 +10,4 @@ deployments/localhost.json
 dist/
 uploads/
 missions/
+*.tsbuildinfo
