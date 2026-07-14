@@ -29,7 +29,13 @@ export const config = {
   escrowAddress: (process.env.ESCROW_ADDRESS || local?.escrow || "") as `0x${string}`,
   tokenAddress: (process.env.TOKEN_ADDRESS || local?.idrx || "") as `0x${string}`,
   anthropicModel: process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
+  // Verifikasi boleh pakai model berbeda dari planning (mis. lebih murah).
+  verifierModel: process.env.VERIFIER_MODEL || process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
   mockBrain: process.env.MANDOR_MOCK_BRAIN === "1",
+  // APPROVE butuh confidence model >= ambang ini (gating fail-safe).
+  confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.8),
+  // Batas percobaan verifikasi per task — anti spam resubmission membakar API.
+  maxVerificationsPerTask: Number(process.env.MAX_VERIFICATIONS_PER_TASK || 5),
   taskDeadlineMinutes: Number(process.env.TASK_DEADLINE_MINUTES || 60),
   proofDir: path.resolve(here, "..", process.env.PROOF_DIR || "../worker-app/uploads"),
 };

@@ -67,7 +67,17 @@ async function main() {
       if (task.status === Status.Open) {
         console.log(`👷 Claim task #${id}...`);
         await write("claimFor", [id, WORKER_ADDRESS]);
-        const proofHash = keccak256(toHex(`fake-proof-${id}-${Date.now()}`));
+        // Verifier baru butuh file bukti nyata yang mengandung kode tantangan —
+        // baca challenge dari mission state dan tulis file ke uploads/ seperti worker-app.
+        const missions = JSON.parse(
+          fs.readFileSync(path.join(here, "..", "missions", "current.json"), "utf8"),
+        ) as { tasks: { taskId: string; spec: { challenge: string } }[] };
+        const challenge = missions.tasks.find((t) => t.taskId === id.toString())?.spec.challenge ?? "";
+        const proofBytes = Buffer.from(`fake-proof-${id}-${Date.now()} kode: ${challenge}`);
+        const proofHash = keccak256(proofBytes);
+        const uploadsDir = path.join(here, "..", "..", "worker-app", "uploads");
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadsDir, proofHash.slice(2) + ".jpg"), proofBytes);
         await write("submitProofFor", [id, WORKER_ADDRESS, proofHash]);
         console.log(`👷 Bukti task #${id} disubmit (${proofHash.slice(0, 14)}...)`);
         claimed.add(id.toString());

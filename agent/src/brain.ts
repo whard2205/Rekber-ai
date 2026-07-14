@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
-import type { HumanTaskSpec, ProofImage, Verdict } from "./types.js";
+import type { HumanTaskSpec } from "./types.js";
+
+// Verifikasi bukti pindah ke verifier.ts (pipeline berlapis + abstraksi provider).
+// File ini sekarang hanya berisi PLANNING: goal user -> daftar task manusia.
 
 const client = new Anthropic();
 
@@ -37,16 +40,6 @@ const PLAN_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const VERDICT_SCHEMA = {
-  type: "object",
-  properties: {
-    decision: { type: "string", enum: ["pass", "fail"] },
-    reasoning: { type: "string" },
-  },
-  required: ["decision", "reasoning"],
-  additionalProperties: false,
-} as const;
-
 function firstText(response: Anthropic.Message): string {
   if (response.stop_reason === "refusal") throw new Error("Model menolak permintaan (refusal)");
   if (response.stop_reason === "max_tokens") throw new Error("Output terpotong (max_tokens)");
@@ -55,24 +48,19 @@ function firstText(response: Anthropic.Message): string {
   return block.text;
 }
 
-/** Pecah goal user menjadi task-task yang butuh manusia di dunia fisik. */
+/** Pecah goal user menjadi task-task yang butuh manusia di dunia fisik.
+ * Field challenge diisi placeholder — loop yang membuat kode tantangan
+ * (anti-cheat tidak boleh bergantung pada output model). */
 export async function planTasks(goal: string): Promise<HumanTaskSpec[]> {
   if (config.mockBrain) {
     console.log("[brain] MODE MOCK — planTasks mengembalikan task dummy, bukan hasil AI");
-    return [
-      {
-        title: "[MOCK] Foto jempol 1",
-        instructions: "Ambil satu foto jempol tangan (mock).",
-        acceptanceCriteria: ["Terlihat jempol manusia"],
-        bountyIDRX: 500000,
-      },
-      {
-        title: "[MOCK] Foto jempol 2",
-        instructions: "Ambil satu foto jempol tangan (mock).",
-        acceptanceCriteria: ["Terlihat jempol manusia"],
-        bountyIDRX: 500000,
-      },
-    ];
+    return [1, 2].map((n) => ({
+      title: `[MOCK] Foto jempol ${n}`,
+      instructions: "Ambil satu foto jempol tangan dengan kode tantangan terlihat (mock).",
+      acceptanceCriteria: ["Terlihat jempol manusia", "Kode tantangan terlihat di foto"],
+      bountyIDRX: 500000,
+      challenge: "",
+    }));
   }
 
   const response = await client.messages.create({
@@ -83,6 +71,7 @@ export async function planTasks(goal: string): Promise<HumanTaskSpec[]> {
       "Kamu adalah MANDOR, AI agent yang mempekerjakan manusia untuk tugas dunia fisik yang tidak bisa dilakukan AI.",
       "Pecah goal user menjadi task foto/verifikasi sederhana yang bisa dikerjakan satu orang dengan HP dalam <10 menit.",
       "Satu task = satu bukti foto. Kalau goal butuh N bukti, buat N task identik.",
+      "Setiap task akan diberi kode tantangan oleh sistem; sebutkan di instructions bahwa worker harus menuliskan kode itu di kertas/layar dan mengikutkannya di foto.",
       "Tulis instructions dalam bahasa Indonesia yang jelas untuk orang awam. Kriteria harus objektif dan bisa dicek dari fotonya saja.",
       "Upah wajar per task: Rp 3.000 - Rp 20.000 (bounty_idr 300000 - 2000000).",
     ].join("\n"),
@@ -98,48 +87,6 @@ export async function planTasks(goal: string): Promise<HumanTaskSpec[]> {
     instructions: t.instructions,
     acceptanceCriteria: t.acceptance_criteria,
     bountyIDRX: t.bounty_idr,
+    challenge: "",
   }));
-}
-
-/** Verifikasi bukti foto worker terhadap kriteria task. Ragu = fail (task dibuka lagi, dana tetap aman). */
-export async function verifyProof(spec: HumanTaskSpec, proof: ProofImage): Promise<Verdict> {
-  if (config.mockBrain) {
-    console.log("[brain] MODE MOCK — verifyProof selalu pass, bukan hasil AI");
-    return { decision: "pass", reasoning: "[MOCK] verifikasi dilewati" };
-  }
-
-  const response = await client.messages.create({
-    model: config.anthropicModel,
-    max_tokens: 1024, // output sengaja pendek: verdict JSON
-    thinking: { type: "adaptive" },
-    system: [
-      "Kamu adalah verifikator MANDOR. Periksa apakah foto bukti kerja memenuhi SEMUA kriteria task.",
-      "Tegas tapi adil: foto asli yang jelas memenuhi kriteria = pass. Foto tidak relevan, screenshot, hasil kamera yang tidak sesuai kriteria, atau meragukan = fail.",
-      "Kalau ragu, pilih fail — task akan dibuka lagi untuk worker lain, dana tetap aman di escrow.",
-      "Tulis reasoning singkat dalam bahasa Indonesia (ditampilkan ke worker dan penonton demo).",
-    ].join("\n"),
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: { type: "base64", media_type: proof.mediaType, data: proof.base64 },
-          },
-          {
-            type: "text",
-            text: [
-              `Task: ${spec.title}`,
-              `Instruksi: ${spec.instructions}`,
-              `Kriteria penerimaan:`,
-              ...spec.acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`),
-            ].join("\n"),
-          },
-        ],
-      },
-    ],
-    output_config: { format: { type: "json_schema", schema: VERDICT_SCHEMA } },
-  });
-
-  return JSON.parse(firstText(response)) as Verdict;
 }

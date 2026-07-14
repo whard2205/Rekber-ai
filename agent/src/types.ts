@@ -6,11 +6,10 @@ export interface HumanTaskSpec {
   acceptanceCriteria: string[];
   // Upah dalam satuan terkecil IDRX (2 desimal): 500000 = Rp 5.000,00
   bountyIDRX: number;
-}
-
-export interface Verdict {
-  decision: "pass" | "fail";
-  reasoning: string;
+  // Kode tantangan anti-cheat, dibuat agent (bukan model) saat posting.
+  // Ikut masuk specHash on-chain sehingga tamper-evident. Worker wajib
+  // menampilkan kode ini di dalam foto bukti.
+  challenge: string;
 }
 
 export interface ProofImage {

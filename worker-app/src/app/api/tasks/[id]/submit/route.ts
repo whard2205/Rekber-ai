@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { keccak256 } from "viem";
@@ -6,6 +7,7 @@ import { getTask, Status, submitProofFor, translateChainError } from "@/lib/chai
 import { config } from "@/lib/config";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB || 8) * 1024 * 1024;
 const MIME_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
@@ -30,6 +32,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!ext) {
     return NextResponse.json({ error: "Format foto harus JPEG, PNG, atau WebP" }, { status: 400 });
   }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json(
+      { error: `Ukuran foto maksimal ${MAX_UPLOAD_BYTES / 1024 / 1024} MB` },
+      { status: 413 },
+    );
+  }
 
   const onchain = await getTask(taskId);
   if (onchain.status !== Status.Claimed) {
@@ -44,7 +52,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const bytes = new Uint8Array(await file.arrayBuffer());
   const proofHash = keccak256(bytes);
   const filename = proofHash.slice(2) + ext;
-  await writeFile(path.join(config.uploadsDir, filename), bytes);
+  const filePath = path.join(config.uploadsDir, filename);
+
+  // Anti-daur-ulang lapis pertama: byte identik = hash identik = file sudah ada.
+  // (Agent masih punya registry lintas-task sebagai lapis kedua.)
+  if (existsSync(filePath)) {
+    return NextResponse.json(
+      { error: "Foto ini sudah pernah dipakai. Ambil foto baru dengan kode tantangan terlihat." },
+      { status: 409 },
+    );
+  }
+  await writeFile(filePath, bytes);
 
   try {
     const receipt = await submitProofFor(taskId, worker as `0x${string}`, proofHash);

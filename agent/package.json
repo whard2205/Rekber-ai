@@ -7,6 +7,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "fake-worker": "tsx scripts/fake-worker.ts",
+    "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

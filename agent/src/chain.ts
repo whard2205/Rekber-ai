@@ -11,7 +11,7 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { hardhat, base, baseSepolia } from "viem/chains";
+import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
 import { config } from "./config.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +23,8 @@ export const idrxAbi = loadAbi("MockIDRX");
 
 const KNOWN_CHAINS: Record<number, typeof hardhat> = {
   31337: hardhat,
+  56: bsc as never,
+  97: bscTestnet as never,
   8453: base as never,
   84532: baseSepolia as never,
 };

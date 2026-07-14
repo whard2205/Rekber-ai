@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getOrCreateWallet } from "@/lib/wallet";
-import { rupiah, shortAddress } from "@/lib/format";
+import { rupiah, shortAddress, explorerTxUrl } from "@/lib/format";
 
 interface Payout {
   taskId: string;
@@ -54,14 +54,24 @@ export default function RiwayatPage() {
       {items.length === 0 ? (
         <div className="empty">Belum ada gaji yang cair. Selesaikan kerjaan pertamamu!</div>
       ) : (
-        items.map((it, i) => (
-          <div key={i} className="card">
-            <p className="card-title" style={{ fontSize: 14 }}>
-              {it.title}
-            </p>
-            <span className="pill pill-ok">{rupiah(it.amount)} — DIBAYAR</span>
-          </div>
-        ))
+        items.map((it, i) => {
+          const url = explorerTxUrl(it.txHash);
+          return (
+            <div key={i} className="card">
+              <p className="card-title" style={{ fontSize: 14 }}>
+                {it.title}
+              </p>
+              <span className="pill pill-ok">{rupiah(it.amount)} — DIBAYAR</span>
+              {url && (
+                <p style={{ fontSize: 12, margin: "8px 0 0" }}>
+                  <a href={url} target="_blank" rel="noreferrer">
+                    🔗 Lihat transaksi: {it.txHash.slice(0, 14)}...
+                  </a>
+                </p>
+              )}
+            </div>
+          );
+        })
       )}
     </>
   );

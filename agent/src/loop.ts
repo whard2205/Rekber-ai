@@ -1,9 +1,17 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { keccak256, toHex, formatUnits } from "viem";
 import { config } from "./config.js";
-import { planTasks, verifyProof } from "./brain.js";
+import { planTasks } from "./brain.js";
 import { getProof } from "./proof-store.js";
+import {
+  AnthropicModelVerifier,
+  MockModelVerifier,
+  ProofRegistry,
+  evaluateProof,
+  type VerifierVerdict,
+} from "./verifier.js";
 import {
   account,
   approveToken,
@@ -14,27 +22,46 @@ import {
   Status,
   tokenBalance,
 } from "./chain.js";
-import type { HumanTaskSpec, Verdict } from "./types.js";
+import type { HumanTaskSpec } from "./types.js";
 
 const POLL_MS = 3000;
-const MAX_VERIFY_ATTEMPTS = 3;
+const MAX_API_RETRIES = 3;
 
 interface TrackedTask {
   taskId: bigint;
   spec: HumanTaskSpec;
   lastTriedProof: string | null;
-  verifyAttempts: number;
-  verdict: Verdict | null;
+  apiRetries: number;
+  verifications: number;
+  verdict: VerifierVerdict | null;
+  payoutTxHash: string | null;
   paid: boolean;
 }
 
 const rupiah = (v: bigint | number) => `Rp ${Number(formatUnits(BigInt(v), 2)).toLocaleString("id-ID")}`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Kode tantangan anti-cheat, tanpa karakter ambigu (0/O, 1/I/L). */
+function generateChallenge(): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(6);
+  let code = "";
+  for (const b of bytes) code += alphabet[b % alphabet.length];
+  return `MDR-${code}`;
+}
+
 export async function runMission(goal: string): Promise<void> {
   console.log(`\n🧠 MANDOR mulai bekerja.\n   Goal: ${goal}\n   Wallet agent: ${account.address}`);
 
+  const model = config.mockBrain
+    ? new MockModelVerifier()
+    : new AnthropicModelVerifier(config.verifierModel);
+  const registry = new ProofRegistry(path.join(missionsDir(), "proof-registry.json"));
+  console.log(`   Verifier: ${model.name} (ambang confidence ${config.confidenceThreshold})`);
+
   const specs = await planTasks(goal);
+  for (const spec of specs) spec.challenge = generateChallenge(); // agent yang membuat, bukan model
+
   const totalBounty = specs.reduce((sum, s) => sum + BigInt(s.bountyIDRX), 0n);
   const balance = await tokenBalance(account.address);
   console.log(`\n📋 Rencana: ${specs.length} task, total upah ${rupiah(totalBounty)} (saldo agent ${rupiah(balance)})`);
@@ -45,10 +72,20 @@ export async function runMission(goal: string): Promise<void> {
 
   const tracked: TrackedTask[] = [];
   for (const spec of specs) {
+    // challenge ikut di-hash -> komitmen on-chain, tamper-evident
     const specHash = keccak256(toHex(JSON.stringify(spec)));
     const taskId = await postTask(BigInt(spec.bountyIDRX), specHash, deadline);
-    tracked.push({ taskId, spec, lastTriedProof: null, verifyAttempts: 0, verdict: null, paid: false });
-    console.log(`   ⛓️  Task #${taskId} "${spec.title}" — ${rupiah(spec.bountyIDRX)} terkunci di escrow`);
+    tracked.push({
+      taskId,
+      spec,
+      lastTriedProof: null,
+      apiRetries: 0,
+      verifications: 0,
+      verdict: null,
+      payoutTxHash: null,
+      paid: false,
+    });
+    console.log(`   ⛓️  Task #${taskId} "${spec.title}" [${spec.challenge}] — ${rupiah(spec.bountyIDRX)} terkunci di escrow`);
   }
   saveMissionState(goal, tracked);
 
@@ -68,40 +105,69 @@ export async function runMission(goal: string): Promise<void> {
 
       console.log(`\n📸 Task #${t.taskId}: bukti masuk dari ${onchain.worker}`);
       t.lastTriedProof = onchain.proofHash;
-      t.verifyAttempts += 1;
 
-      // Mode mock tidak punya file bukti nyata — verifikasi langsung ke mock verifier.
-      const proof = config.mockBrain
-        ? { base64: "", mediaType: "image/jpeg" as const }
-        : getProof(onchain.proofHash);
-      let verdict: Verdict;
-      if (!proof) {
-        verdict = { decision: "fail", reasoning: "File bukti tidak ditemukan di proof store" };
+      let verdict: VerifierVerdict;
+      if (t.verifications >= config.maxVerificationsPerTask) {
+        verdict = {
+          taskId: t.taskId.toString(),
+          challengeMatched: false,
+          requirementsMatched: false,
+          duplicateDetected: false,
+          confidence: 0,
+          decision: "REJECT",
+          reasons: [`Batas ${config.maxVerificationsPerTask}x percobaan verifikasi tercapai untuk task ini`],
+          evidenceHash: onchain.proofHash,
+        };
       } else {
+        t.verifications += 1;
         try {
-          verdict = await verifyProof(t.spec, proof);
+          verdict = await evaluateProof(
+            {
+              taskId: t.taskId.toString(),
+              spec: t.spec,
+              proof: getProof(onchain.proofHash),
+              proofHash: onchain.proofHash,
+              submittedAt: onchain.submittedAt,
+              deadline: onchain.deadline,
+            },
+            { model, registry, confidenceThreshold: config.confidenceThreshold },
+          );
+          t.apiRetries = 0;
         } catch (err) {
-          console.log(`   ⚠️ Verifikasi error (${(err as Error).message}) — dicoba lagi di tick berikutnya`);
-          t.lastTriedProof = null; // biarkan dicoba ulang
-          if (t.verifyAttempts >= MAX_VERIFY_ATTEMPTS) {
-            console.log(`   ⛔ ${MAX_VERIFY_ATTEMPTS}x gagal verifikasi — task dibiarkan Submitted (worker terlindungi forceRelease)`);
-            t.lastTriedProof = onchain.proofHash;
+          // Error API/jaringan (bukan keputusan) -> retry di tick berikutnya
+          t.apiRetries += 1;
+          console.log(`   ⚠️ Verifikasi error (${(err as Error).message}) — percobaan ${t.apiRetries}/${MAX_API_RETRIES}`);
+          if (t.apiRetries < MAX_API_RETRIES) {
+            t.lastTriedProof = null;
+            continue;
           }
+          console.log(`   ⛔ ${MAX_API_RETRIES}x error API — task dibiarkan Submitted (worker terlindungi forceRelease)`);
           continue;
         }
       }
 
       t.verdict = verdict;
-      if (verdict.decision === "pass") {
-        await releaseBounty(t.taskId);
+      let txHash: string;
+      if (verdict.decision === "APPROVE") {
+        const receipt = await releaseBounty(t.taskId);
+        txHash = receipt.transactionHash;
+        t.payoutTxHash = txHash;
         t.paid = true;
-        console.log(`   ✅ LULUS — ${verdict.reasoning}`);
-        console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker}`);
+        console.log(`   ✅ APPROVE (confidence ${verdict.confidence.toFixed(2)}) — ${verdict.reasons.join("; ")}`);
+        console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker} (tx ${txHash.slice(0, 14)}...)`);
       } else {
-        await rejectAndReopen(t.taskId);
-        console.log(`   ❌ DITOLAK — ${verdict.reasoning}`);
+        const receipt = await rejectAndReopen(t.taskId);
+        txHash = receipt.transactionHash;
+        console.log(`   ❌ REJECT — ${verdict.reasons.join("; ")}`);
         console.log(`   🔄 Task #${t.taskId} dibuka lagi untuk worker lain`);
       }
+      appendAuditLog({
+        ts: new Date().toISOString(),
+        worker: onchain.worker,
+        txHash,
+        verifier: model.name,
+        ...verdict,
+      });
       saveMissionState(goal, tracked);
     }
   }
@@ -118,6 +184,11 @@ function missionsDir(): string {
   return dir;
 }
 
+/** Jejak keputusan agent yang bisa diaudit (JSONL) — bahan dashboard & bukti juri. */
+function appendAuditLog(entry: Record<string, unknown>) {
+  fs.appendFileSync(path.join(missionsDir(), "audit-log.jsonl"), JSON.stringify(entry) + "\n");
+}
+
 function saveMissionState(goal: string, tracked: TrackedTask[]) {
   const state = {
     goal,
@@ -126,7 +197,10 @@ function saveMissionState(goal: string, tracked: TrackedTask[]) {
       taskId: t.taskId.toString(),
       spec: t.spec,
       paid: t.paid,
-      verdict: t.verdict,
+      payoutTxHash: t.payoutTxHash,
+      lastVerdict: t.verdict
+        ? { decision: t.verdict.decision, reasons: t.verdict.reasons, confidence: t.verdict.confidence }
+        : null,
     })),
   };
   fs.writeFileSync(path.join(missionsDir(), "current.json"), JSON.stringify(state, null, 2));
@@ -144,7 +218,7 @@ function buildReport(goal: string, tracked: TrackedTask[]): string {
   ];
   for (const t of tracked) {
     lines.push(
-      `| #${t.taskId} ${t.spec.title} | ${rupiah(t.spec.bountyIDRX)} | ${t.paid ? "DIBAYAR" : "-"} | ${t.verdict?.reasoning ?? "-"} |`,
+      `| #${t.taskId} ${t.spec.title} | ${rupiah(t.spec.bountyIDRX)} | ${t.paid ? "DIBAYAR" : "-"} | ${t.verdict?.reasons.join("; ") ?? "-"} |`,
     );
   }
   return lines.join("\n");

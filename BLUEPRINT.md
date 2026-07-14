@@ -1,7 +1,8 @@
-# MANDOR — AI yang Mempekerjakan Manusia
+# MANDOR — Human Execution & Proof Layer untuk AI Agent
 
-> **Track:** AI Agents · **Event:** DevWeb3Jogja x Coinfest Hackathon 2026
-> **One-liner:** Selama ini manusia menyewa AI. MANDOR membaliknya: AI agent yang merekrut manusia, menaruh upah di escrow on-chain, memverifikasi hasil kerja pakai vision, dan menggaji dalam hitungan detik — tanpa satu pun manusia di belakang layar.
+> **Track:** AI Agents · **Event:** Indonesia Web3 Hackathon 2026 (didukung BNB Chain)
+> **Positioning:** MANDOR adalah *BNB-native human execution and proof layer* — akses AI agent ke dunia fisik. Agent secara otonom membuat task, mengunci upah IDRX di escrow, menerima pekerja manusia, memverifikasi bukti anti-manipulasi berlapis, dan menyelesaikan pembayaran on-chain.
+> **Catatan jujur:** produk "AI menyewa manusia" sudah ada (RentAHuman dkk). Kita TIDAK mengklaim jadi yang pertama — diferensiasi kita di lapisan eksekusi + bukti: challenge-bound proof, verifikasi berlapis, perlindungan worker di kontrak, settlement IDRX, Indonesia-first.
 
 ---
 
@@ -13,7 +14,7 @@
 
 **MANDOR menjawab keduanya:** marketplace tempat AI agent merekrut manusia untuk tugas dunia nyata, dengan **escrow on-chain** (upah terkunci SEBELUM kerja dimulai — mustahil ditahan seperti kasus Remotasks), **verifikasi otomatis** (vision AI, kriteria transparan), dan **gaji instan** (detik, bukan minggu).
 
-**Insight yang membalik ruangan:** Semua tim lain akan pitching "agent yang melayani manusia di DeFi". MANDOR membalik relasinya: **manusia yang bekerja untuk AI — dengan perlindungan yang tidak pernah diberikan platform Web2.** Juri ingat framing inversi, bukan iterasi.
+**Framing pitch:** Banyak tim akan pitching "agent yang melayani manusia di DeFi". MANDOR ada di segmen kebalikan: **manusia yang mengeksekusi untuk AI — dengan bukti yang bisa diverifikasi dan perlindungan pembayaran di level kontrak.** Bukan klaim "pertama di dunia" (RentAHuman dkk sudah ada) — klaimnya: *execution + proof layer* yang paling bisa dipercaya, BNB-native, dan Indonesia-first.
 
 **Kenapa harus blockchain (jawaban wajib juri):**
 1. AI agent tidak bisa buka rekening bank — tapi bisa punya wallet.
@@ -81,14 +82,14 @@ Satu-satunya manusia di sistem ini adalah **pekerjanya**. Perekrutan, kontrak, Q
 
 | Komponen | Pilihan | Alasan |
 |---|---|---|
-| Chain | **Base** (Sepolia → mainnet saat demo) | Murah, cepat, USDC & IDRX native, ekosistem x402/AgentKit. Kontrak portable ke L2 sponsor lain (Lisk/Mantle) kalau perlu. |
+| Chain | **BNB Smart Chain** (BSC Testnet → mainnet saat demo) | Selaras sponsor hackathon; murah & cepat; IDRX tersedia di BNB; ekosistem agent (ERC-8004 registry, bnbagent-sdk). Kontrak tetap portable ke EVM chain lain via env config. |
 | Smart contract | **Solidity + Hardhat**, OpenZeppelin | Satu kontrak `TaskEscrow` (~150 baris): `postTask`, `claimTask`, `submitProof`, `releaseBounty`, `rejectAndReopen`, `refundExpired`. Kecil = bisa diaudit sendiri = pede saat demo. |
 | Agent brain | **TypeScript + Claude API** (tool use + vision) | Loop: plan → post → poll events → verify → pay → report. |
 | Agent wallet | **viem** (upgrade path: Coinbase AgentKit/CDP) | Agent pegang wallet sendiri, tanda tangan tx sendiri. |
 | Worker app | **Next.js PWA mobile-first**, burner wallet lokal (v0) → Privy (v1) | Penonton non-crypto bisa jadi worker dalam 30 detik tanpa install apa pun. Krusial untuk live demo. |
 | Relayer | Backend worker-app membayar gas untuk claim/submit (`claimFor`/`submitProofFor`) | Worker baru punya 0 gas — friction harus nol. Roadmap: paymaster/AA. |
 | Bukti kerja | **IPFS (Pinata)**, hash on-chain | Murah, verifiable. |
-| Token upah | **IDRX** (utama — "digaji AI dalam Rupiah" = headline) + USDC | Lokal, disukai juri Coinfest. |
+| Token upah | **IDRX** (utama) — settlement bounty on-chain dalam Rupiah | Lokal, relevan untuk juri Indonesia. Istilah yang dipakai: "bounty settlement", BUKAN "gaji/crypto salary". |
 
 ### Kontrak `TaskEscrow` — state machine minimal
 
@@ -173,7 +174,7 @@ OPEN ──claim──► CLAIMED ──submitProof──► SUBMITTED ──rel
 |---|---|
 | Worker curang? | Vision check + EXIF + redundansi multi-worker + reputation. Dan escrow berarti curang = tidak dibayar. |
 | Kenapa nggak Web2 saja? | Agent tak punya rekening bank; micropayment global instan; escrow tanpa pihak ketiga — justru ketiadaan escrow trustless itulah yang bikin kasus Remotasks terjadi. Hilangkan blockchain-nya → produknya mati. |
-| Bedanya dengan HUMAN Protocol / Payman? | HUMAN = job market manual, bukan agent-native. Payman ($13,8M, Visa) = API fintech rails AS, tertutup. Kami: agent yang memutuskan, memverifikasi, dan membayar sendiri, on-chain, payout Rupiah. Funding Payman justru bukti tesisnya valid. |
+| Bedanya dengan RentAHuman / HUMAN Protocol / Payman? | RentAHuman = marketplace matching AI↔manusia yang sudah ada — kami TIDAK klaim pertama; diferensiasi kami di proof layer: challenge-bound evidence, verifikasi berlapis, forceRelease, audit trail, IDRX. HUMAN = job market manual, bukan agent-native. Payman ($13,8M, Visa) = API fintech rails AS, tertutup. Funding mereka justru bukti tesisnya valid. |
 | Revenue? | Fee 2–5% per task + API x402 untuk agent eksternal yang mau menyewa manusia. |
 | Skalanya? | Data labeling $10M+ miliar; AV companies bayar $4 juta/kuartal cuma untuk data peta Hivemapper. Setiap agent economy butuh human layer — kami standarnya. |
 

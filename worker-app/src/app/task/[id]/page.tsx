@@ -3,16 +3,36 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { getOrCreateWallet } from "@/lib/wallet";
-import { rupiah } from "@/lib/format";
+import { rupiah, explorerTxUrl } from "@/lib/format";
 
 const Status = { Open: 1, Claimed: 2, Submitted: 3, Paid: 4, Refunded: 5 } as const;
 
 interface TaskDetail {
   taskId: string;
-  spec: { title: string; instructions: string; acceptanceCriteria: string[]; bountyIDRX: number };
+  spec: {
+    title: string;
+    instructions: string;
+    acceptanceCriteria: string[];
+    bountyIDRX: number;
+    challenge?: string;
+  };
   bounty: string;
   status: number;
   worker: string;
+  lastVerdict: { decision: "APPROVE" | "REJECT"; reasons: string[]; confidence: number } | null;
+  payoutTxHash: string | null;
+}
+
+function TxLink({ hash, label }: { hash: string; label: string }) {
+  const url = explorerTxUrl(hash);
+  if (!url) return null;
+  return (
+    <p style={{ fontSize: 12, margin: "6px 0 0" }}>
+      <a href={url} target="_blank" rel="noreferrer">
+        🔗 {label}: {hash.slice(0, 14)}...
+      </a>
+    </p>
+  );
 }
 
 export default function TaskDetailPage() {
@@ -24,6 +44,8 @@ export default function TaskDetailPage() {
   const [rejected, setRejected] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [claimTx, setClaimTx] = useState<string | null>(null);
+  const [submitTx, setSubmitTx] = useState<string | null>(null);
   const prevStatus = useRef<number | null>(null);
   const prevWorker = useRef<string | null>(null);
 
@@ -69,6 +91,7 @@ export default function TaskDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengambil kerjaan");
+      setClaimTx(data.txHash);
       setRejected(false);
     } catch (e) {
       setError((e as Error).message);
@@ -80,6 +103,11 @@ export default function TaskDetailPage() {
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (f.size > 8 * 1024 * 1024) {
+      setError("Ukuran foto maksimal 8 MB");
+      return;
+    }
+    setError(null);
     setFile(f);
     setPreview(URL.createObjectURL(f));
   }
@@ -95,6 +123,7 @@ export default function TaskDetailPage() {
       const res = await fetch(`/api/tasks/${id}/submit`, { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengirim bukti");
+      setSubmitTx(data.txHash);
       setFile(null);
       setPreview(null);
     } catch (e) {
@@ -107,6 +136,8 @@ export default function TaskDetailPage() {
   if (!task || !wallet) return <div className="empty">Memuat...</div>;
 
   const isMine = task.worker.toLowerCase() === wallet.address.toLowerCase();
+  const rejectReasons =
+    task.lastVerdict?.decision === "REJECT" ? task.lastVerdict.reasons : [];
 
   return (
     <>
@@ -123,10 +154,41 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
+      {task.spec.challenge && task.status !== Status.Paid && (
+        <div className="card" style={{ borderColor: "var(--accent)", background: "var(--accent-bg)" }}>
+          <p className="card-title" style={{ fontSize: 13, color: "var(--accent-ink)" }}>
+            🔐 Kode tantangan — tulis di kertas/layar dan ikutkan di fotomu
+          </p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 28,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              color: "var(--accent-ink)",
+              fontFamily: "ui-monospace, monospace",
+            }}
+          >
+            {task.spec.challenge}
+          </p>
+          <p className="card-meta" style={{ margin: "6px 0 0" }}>
+            Ini bukti fotomu diambil khusus untuk task ini — foto lama akan ditolak AI.
+          </p>
+        </div>
+      )}
+
       {error && <div className="alert alert-fail">{error}</div>}
       {rejected && task.status === Status.Open && (
         <div className="alert alert-fail">
-          ❌ Bukti sebelumnya ditolak AI — kriteria belum terpenuhi. Ambil lagi dan coba sekali lagi.
+          ❌ Bukti sebelumnya ditolak AI.
+          {rejectReasons.length > 0 && (
+            <ul className="criteria" style={{ color: "inherit", marginTop: 6 }}>
+              {rejectReasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          )}
+          Ambil lagi dan coba sekali lagi dengan foto baru.
         </div>
       )}
 
@@ -155,6 +217,7 @@ export default function TaskDetailPage() {
           <button className="btn" disabled={busy || !file} onClick={handleSubmit}>
             {busy ? "Mengirim..." : "Kirim Bukti"}
           </button>
+          {claimTx && <TxLink hash={claimTx} label="Tx claim" />}
         </div>
       )}
 
@@ -165,11 +228,15 @@ export default function TaskDetailPage() {
       {task.status === Status.Submitted && isMine && (
         <div className="alert" style={{ background: "var(--accent-bg)", color: "var(--accent-ink)" }}>
           <span className="spin">🧠</span> AI sedang memverifikasi bukti kamu...
+          {submitTx && <TxLink hash={submitTx} label="Tx bukti" />}
         </div>
       )}
 
       {task.status === Status.Paid && isMine && (
-        <div className="alert alert-ok">✅ Lulus! {rupiah(task.bounty)} sudah dikirim ke wallet kamu.</div>
+        <div className="alert alert-ok">
+          ✅ Lulus! {rupiah(task.bounty)} sudah dikirim ke wallet kamu.
+          {task.payoutTxHash && <TxLink hash={task.payoutTxHash} label="Tx gaji" />}
+        </div>
       )}
     </>
   );
