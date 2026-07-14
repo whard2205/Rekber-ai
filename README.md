@@ -66,9 +66,9 @@ Agent (Claude)                     Chain (BSC)                    Human worker (
 |---|---|---|
 | [`contracts/`](contracts/) | Solidity 0.8.24, Hardhat, OpenZeppelin | `TaskEscrow` state machine (`Open → Claimed → Submitted → Paid/Refunded`) + `MockIDRX` test token (2 decimals, matching IDRX) |
 | [`agent/`](agent/) | TypeScript, viem, `@anthropic-ai/sdk` | Autonomous employer: plans tasks (structured outputs), posts escrow, watches chain, runs the verification pipeline, settles — no human operator in the loop |
-| [`worker-app/`](worker-app/) | Next.js 15, viem | Mobile PWA for workers + relayer API (server holds relayer key, pays gas for `claimFor`/`submitProofFor`) |
+| [`worker-app/`](worker-app/) | Next.js 15, viem | Mobile PWA for workers + relayer API (server holds relayer key, pays gas for `claimFor`/`submitProofFor`) + **`/panggung` stage screen** (projector view: live task status, agent decision feed, QR for the audience) |
 
-The AI provider sits behind a `ModelVerifier` interface ([`agent/src/verifier.ts`](agent/src/verifier.ts)): `AnthropicModelVerifier` for production, `MockModelVerifier` (deterministic byte rules, clearly `[MOCK]`-labeled) for offline testing. Swapping in a cheaper model or another vendor is one class.
+The AI provider sits behind a `ModelVerifier` interface ([`agent/src/verifier.ts`](agent/src/verifier.ts)): `AnthropicModelVerifier` (primary), `OpenAIModelVerifier` (vendor fallback, e.g. `gpt-4o`, via `VERIFIER_PROVIDER=openai`), and `MockModelVerifier` (deterministic byte rules, clearly `[MOCK]`-labeled) for offline testing. The financial gate (`parseModelVerdict` + confidence threshold) applies identically to every provider.
 
 ### Layered anti-cheat verification
 
@@ -150,6 +150,9 @@ For a mainnet demo with real IDRX, verify the official IDRX contract address on 
 | `AGENT_PRIVATE_KEY` | agent | Agent wallet (posts tasks, pays bounties) |
 | `ANTHROPIC_API_KEY` | agent | Claude API (planning + vision verification) |
 | `ANTHROPIC_MODEL` / `VERIFIER_MODEL` | agent | Planning / verification models (verification may use a cheaper model) |
+| `VERIFIER_PROVIDER` | agent | `anthropic` \| `openai` \| `mock` — provider abstraction for verification |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | agent | Only when `VERIFIER_PROVIDER=openai` (default model `gpt-4o`) |
+| `NEXT_PUBLIC_WORKER_URL` | worker-app | URL encoded into the `/panggung` QR (empty = LAN IP auto-detect) |
 | `MANDOR_MOCK_BRAIN` | agent | `1` = deterministic offline mode, clearly `[MOCK]`-labeled |
 | `CONFIDENCE_THRESHOLD` | agent | Min model confidence for APPROVE (default 0.8) |
 | `MAX_VERIFICATIONS_PER_TASK` | agent | Anti-spam verification cap (default 5) |

@@ -185,6 +185,75 @@ export class AnthropicModelVerifier implements ModelVerifier {
   }
 }
 
+/** Verifikasi lewat endpoint mana pun yang kompatibel format OpenAI chat/completions
+ * (OpenAI langsung, atau proxy seperti AI/ML API — api.aimlapi.com — yang meneruskan
+ * ke banyak vendor lewat satu API). REST resmi via fetch, tidak menambah dependency.
+ * Output tetap divalidasi parseModelVerdict — proxy TIDAK dipercaya buta. */
+export class OpenAICompatibleVerifier implements ModelVerifier {
+  name: string;
+
+  constructor(
+    private readonly model: string,
+    private readonly apiKey: string,
+    private readonly baseUrl = "https://api.openai.com/v1",
+    vendorLabel = "openai",
+  ) {
+    this.name = `${vendorLabel}:${model}`;
+  }
+
+  async evaluate(spec: HumanTaskSpec, proof: ProofImage): Promise<unknown> {
+    const res = await fetch(`${this.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 600,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "verdict", strict: true, schema: VERDICT_SCHEMA },
+        },
+        messages: [
+          {
+            role: "system",
+            content: [
+              "Kamu adalah verifikator MANDOR. Periksa foto bukti kerja terhadap kriteria task.",
+              "PENTING: foto harus menampilkan kode tantangan yang TERTULIS (di kertas/layar) persis seperti yang diberikan.",
+              "Tegas tapi adil. Kalau ragu, REJECT dengan confidence rendah. Reasons dalam bahasa Indonesia.",
+            ].join("\n"),
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:${proof.mediaType};base64,${proof.base64}` },
+              },
+              {
+                type: "text",
+                text: [
+                  `Task: ${spec.title}`,
+                  `Instruksi: ${spec.instructions}`,
+                  `Kode tantangan yang harus terlihat di foto: ${spec.challenge}`,
+                  `Kriteria penerimaan:`,
+                  ...spec.acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`),
+                ].join("\n"),
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) throw new Error(`${this.name} API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data = (await res.json()) as {
+      choices: { message: { content: string | null; refusal?: string | null } }[];
+    };
+    const msg = data.choices[0]?.message;
+    if (!msg || msg.refusal) throw new Error(`Model menolak permintaan: ${msg?.refusal ?? "kosong"}`);
+    if (!msg.content) throw new Error("Respons OpenAI kosong");
+    return JSON.parse(msg.content);
+  }
+}
+
 export interface EvaluateInput {
   taskId: string;
   spec: HumanTaskSpec;
@@ -198,6 +267,33 @@ export interface EvaluateOptions {
   model: ModelVerifier;
   registry: ProofRegistry;
   confidenceThreshold: number;
+}
+
+/** Pilih implementasi verifier dari config — satu-satunya tempat pemilihan vendor. */
+export function createModelVerifier(cfg: {
+  verifierProvider: "anthropic" | "openai" | "aimlapi" | "mock";
+  verifierModel: string;
+  openaiApiKey: string;
+  openaiModel: string;
+  aimlApiKey: string;
+  aimlApiModel: string;
+}): ModelVerifier {
+  switch (cfg.verifierProvider) {
+    case "mock":
+      return new MockModelVerifier();
+    case "openai":
+      return new OpenAICompatibleVerifier(cfg.openaiModel, cfg.openaiApiKey);
+    case "aimlapi":
+      // Proxy OpenAI-compatible (banyak vendor lewat satu API) — https://aimlapi.com
+      return new OpenAICompatibleVerifier(
+        cfg.aimlApiModel,
+        cfg.aimlApiKey,
+        "https://api.aimlapi.com/v1",
+        "aimlapi",
+      );
+    case "anthropic":
+      return new AnthropicModelVerifier(cfg.verifierModel);
+  }
 }
 
 function reject(input: EvaluateInput, reasons: string[], duplicateDetected = false): VerifierVerdict {

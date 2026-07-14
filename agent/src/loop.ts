@@ -6,8 +6,7 @@ import { config } from "./config.js";
 import { planTasks } from "./brain.js";
 import { getProof } from "./proof-store.js";
 import {
-  AnthropicModelVerifier,
-  MockModelVerifier,
+  createModelVerifier,
   ProofRegistry,
   evaluateProof,
   type VerifierVerdict,
@@ -53,9 +52,7 @@ function generateChallenge(): string {
 export async function runMission(goal: string): Promise<void> {
   console.log(`\n🧠 MANDOR mulai bekerja.\n   Goal: ${goal}\n   Wallet agent: ${account.address}`);
 
-  const model = config.mockBrain
-    ? new MockModelVerifier()
-    : new AnthropicModelVerifier(config.verifierModel);
+  const model = createModelVerifier(config);
   const registry = new ProofRegistry(path.join(missionsDir(), "proof-registry.json"));
   console.log(`   Verifier: ${model.name} (ambang confidence ${config.confidenceThreshold})`);
 

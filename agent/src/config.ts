@@ -32,6 +32,19 @@ export const config = {
   // Verifikasi boleh pakai model berbeda dari planning (mis. lebih murah).
   verifierModel: process.env.VERIFIER_MODEL || process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
   mockBrain: process.env.MANDOR_MOCK_BRAIN === "1",
+  // Provider verifikasi: anthropic | openai | aimlapi | mock.
+  // Default mengikuti MANDOR_MOCK_BRAIN; bisa dipisah (mis. planning mock + verifikasi aimlapi/openai).
+  verifierProvider: (process.env.VERIFIER_PROVIDER ||
+    (process.env.MANDOR_MOCK_BRAIN === "1" ? "mock" : "anthropic")) as
+    | "anthropic"
+    | "openai"
+    | "aimlapi"
+    | "mock",
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
+  // AI/ML API (https://aimlapi.com) — proxy OpenAI-compatible ke banyak vendor (GPT-4o, Claude, dll).
+  aimlApiKey: process.env.AIMLAPI_API_KEY || "",
+  aimlApiModel: process.env.AIMLAPI_MODEL || "gpt-4o",
   // APPROVE butuh confidence model >= ambang ini (gating fail-safe).
   confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.8),
   // Batas percobaan verifikasi per task — anti spam resubmission membakar API.
@@ -45,4 +58,13 @@ if (!config.escrowAddress || !config.tokenAddress) {
 }
 if (!config.mockBrain && !process.env.ANTHROPIC_API_KEY) {
   throw new Error("ANTHROPIC_API_KEY wajib diisi (atau set MANDOR_MOCK_BRAIN=1 untuk uji loop offline)");
+}
+if (config.verifierProvider === "openai" && !config.openaiApiKey) {
+  throw new Error("VERIFIER_PROVIDER=openai butuh OPENAI_API_KEY");
+}
+if (config.verifierProvider === "aimlapi" && !config.aimlApiKey) {
+  throw new Error("VERIFIER_PROVIDER=aimlapi butuh AIMLAPI_API_KEY");
+}
+if (config.verifierProvider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
+  throw new Error("VERIFIER_PROVIDER=anthropic butuh ANTHROPIC_API_KEY");
 }
