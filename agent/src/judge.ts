@@ -33,9 +33,12 @@ export interface JudgeVerdict {
   reasons: string[];
   commit: JudgeCommit;
   verdictHash: Hex;
+  /** Output model tervalidasi apa adanya, untuk ditampilkan di UI web (checklist per-poin) —
+   * null kalau tidak ada panggilan model (duplikat foto) atau outputnya tidak valid. */
+  raw: RawJudgeOutput | null;
 }
 
-interface RawJudgeOutput {
+export interface RawJudgeOutput {
   itemMatchesListing: boolean;
   dealCodeInSellerPhoto: boolean;
   dealCodeInBuyerPhoto: boolean;
@@ -174,9 +177,15 @@ function hashCommit(commit: JudgeCommit): Hex {
 
 /** ESCALATE langsung, tanpa panggil AI — dipakai untuk duplikat foto, output rusak, dan
  * (dari loop.ts) kegagalan API berulang. Diekspor supaya loop.ts bisa memakainya juga. */
-export function buildEscalateVerdict(deal: DealRecord, model: string, reasons: string[], confidence = 0): JudgeVerdict {
+export function buildEscalateVerdict(
+  deal: DealRecord,
+  model: string,
+  reasons: string[],
+  confidence = 0,
+  raw: RawJudgeOutput | null = null,
+): JudgeVerdict {
   const commit = buildCommit(deal, "ESCALATE", confidence, reasons, model);
-  return { outcome: "ESCALATE", confidence, reasons, commit, verdictHash: hashCommit(commit) };
+  return { outcome: "ESCALATE", confidence, reasons, commit, verdictHash: hashCommit(commit), raw };
 }
 
 export interface JudgeOptions {
@@ -219,9 +228,22 @@ export async function judgeDispute(deal: DealRecord, images: ImageInput[], opts:
     if (parsed.confidence < opts.confidenceThreshold) {
       reasons.push(`Confidence ${parsed.confidence.toFixed(2)} di bawah ambang ${opts.confidenceThreshold}`);
     }
-    return buildEscalateVerdict(deal, modelName, reasons.length ? reasons : ["Model tidak yakin dengan bukti yang ada"], parsed.confidence);
+    return buildEscalateVerdict(
+      deal,
+      modelName,
+      reasons.length ? reasons : ["Model tidak yakin dengan bukti yang ada"],
+      parsed.confidence,
+      parsed,
+    );
   }
 
   const commit = buildCommit(deal, parsed.decision, parsed.confidence, parsed.reasons, modelName);
-  return { outcome: parsed.decision, confidence: parsed.confidence, reasons: parsed.reasons, commit, verdictHash: hashCommit(commit) };
+  return {
+    outcome: parsed.decision,
+    confidence: parsed.confidence,
+    reasons: parsed.reasons,
+    commit,
+    verdictHash: hashCommit(commit),
+    raw: parsed,
+  };
 }

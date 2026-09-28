@@ -288,7 +288,7 @@ Loop tiap `POLL_MS` (3000):
   `config.ts`, `chain.ts` (ABI baru, `resolve`/`escalate`/`getDeal`, nonceManager), `store.ts` (baca deal & bukti, tulis verdict, registry foto), `ai.ts` (provider multi-gambar: OpenAI-compatible, Anthropic, mock), `judge.ts` (prompt §3.4c, parse + gate, `buildCommit`, `verdictHash`), `shipment.ts` (§3.4b). Test unit `node:test` (pola `agent/test/verifier.test.ts`): gate (UNSURE/low confidence/malformed/foto dobel → ESCALATE; REFUND/RELEASE lolos), `verdictHash` deterministik & sama dengan hitungan ulang dari `commit` yang disimpan, mock rules.
   *Cek:* `npm test` + `npm run typecheck` hijau.
 
-- [ ] **R-06 · Agent: daemon loop + skrip arbiter manusia**
+- [x] **R-06 · Agent: daemon loop + skrip arbiter manusia**
   §3.5 lengkap. `index.ts` menjalankan daemon (tidak ada lagi argumen goal CLI).
   *Cek:* dengan node lokal + deal yang dibuat manual lewat skrip kecil di test, daemon memproses `Shipped` → shipmentCheck, `Disputed` (mock `BATU`) → `Refunded` on-chain dengan verdictHash yang cocok dengan file.
 

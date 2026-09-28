@@ -1,260 +1,182 @@
-import crypto from "node:crypto";
-import fs from "node:fs";
+/** Daemon AI arbiter (docs/rekber-ai/PLAN.md §3.5). Loop tiap POLL_MS: cek pengiriman
+ * begitu Shipped, putus sengketa begitu Disputed + tanggapan penjual ada/lewat batas waktu.
+ * Tiap deal diproses dalam try/catch sendiri (pelajaran MANDOR O-04) — satu deal error tidak
+ * menghentikan daemon. */
 import path from "node:path";
-import { keccak256, toHex, formatUnits } from "viem";
+import type { Hex } from "viem";
 import { config } from "./config.js";
-import { planTasks } from "./brain.js";
-import { getProof } from "./proof-store.js";
-import {
-  createModelVerifier,
-  ProofRegistry,
-  evaluateProof,
-  type VerifierVerdict,
-} from "./verifier.js";
-import {
-  account,
-  approveToken,
-  getTask,
-  postTask,
-  rejectAndReopen,
-  releaseBounty,
-  Status,
-  tokenBalance,
-} from "./chain.js";
-import type { HumanTaskSpec } from "./types.js";
+import { account, escalate, getDeal, resolve, Status, type OnchainDeal } from "./chain.js";
+import { createAiProvider, type AiProvider } from "./ai.js";
+import { checkShipment, type ShipmentCheck } from "./shipment.js";
+import { judgeDispute, buildEscalateVerdict, type JudgeCommit, type JudgeOutcome, type RawJudgeOutput } from "./judge.js";
+import { listDeals, loadEvidenceImage, writeVerdict, readVerdict, appendAuditLog } from "./store.js";
+import { PhotoRegistry } from "./registry.js";
+import type { DealRecord, ImageInput } from "./types.js";
 
-const POLL_MS = 3000;
 const MAX_API_RETRIES = 3;
-
-interface TrackedTask {
-  taskId: bigint;
-  spec: HumanTaskSpec;
-  lastTriedProof: string | null;
-  apiRetries: number;
-  verifications: number;
-  verdict: VerifierVerdict | null;
-  payoutTxHash: string | null;
-  paid: boolean;
-}
-
-const rupiah = (v: bigint | number) => `Rp ${Number(formatUnits(BigInt(v), 2)).toLocaleString("id-ID")}`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Kode tantangan anti-cheat, tanpa karakter ambigu (0/O, 1/I/L). */
-function generateChallenge(): string {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.randomBytes(6);
-  let code = "";
-  for (const b of bytes) code += alphabet[b % alphabet.length];
-  return `MDR-${code}`;
+interface VerdictFile {
+  shipmentCheck?: ShipmentCheck;
+  commit?: JudgeCommit;
+  verdictHash?: Hex;
+  txHash?: string;
+  raw?: RawJudgeOutput | null;
 }
 
-export async function runMission(goal: string): Promise<void> {
-  console.log(`\n🧠 MANDOR mulai bekerja.\n   Goal: ${goal}\n   Wallet agent: ${account.address}`);
+function readVerdictFile(dealCode: string): VerdictFile {
+  return (readVerdict(dealCode) as VerdictFile | null) ?? {};
+}
 
-  const model = createModelVerifier(config);
-  const registry = new ProofRegistry(path.join(missionsDir(), "proof-registry.json"));
-  console.log(`   Verifier: ${model.name} (ambang confidence ${config.confidenceThreshold})`);
+interface ImageSection {
+  photos: (string | null | undefined)[];
+  label: string;
+}
 
-  const specs = await planTasks(goal);
-  for (const spec of specs) spec.challenge = generateChallenge(); // agent yang membuat, bukan model
-
-  const totalBounty = specs.reduce((sum, s) => sum + BigInt(s.bountyIDRX), 0n);
-  const balance = await tokenBalance(account.address);
-  console.log(`\n📋 Rencana: ${specs.length} task, total upah ${rupiah(totalBounty)} (saldo agent ${rupiah(balance)})`);
-  if (balance < totalBounty) throw new Error("Saldo IDRX agent tidak cukup untuk total upah");
-
-  await approveToken(totalBounty);
-  const deadline = Math.floor(Date.now() / 1000) + config.taskDeadlineMinutes * 60;
-
-  const tracked: TrackedTask[] = [];
-  for (const spec of specs) {
-    // challenge ikut di-hash -> komitmen on-chain, tamper-evident
-    const specHash = keccak256(toHex(JSON.stringify(spec)));
-    const taskId = await postTask(BigInt(spec.bountyIDRX), specHash, deadline);
-    tracked.push({
-      taskId,
-      spec,
-      lastTriedProof: null,
-      apiRetries: 0,
-      verifications: 0,
-      verdict: null,
-      payoutTxHash: null,
-      paid: false,
-    });
-    console.log(`   ⛓️  Task #${taskId} "${spec.title}" [${spec.challenge}] — ${rupiah(spec.bountyIDRX)} terkunci di escrow`);
-  }
-  saveMissionState(goal, tracked);
-
-  console.log(`\n👀 Menunggu pekerja manusia... (poll tiap ${POLL_MS / 1000}s)`);
-  while (tracked.some((t) => !t.paid)) {
-    await sleep(POLL_MS);
-    for (const t of tracked) {
-      if (t.paid) continue;
-      // O-04: RPC publik (getTask/releaseBounty/rejectAndReopen) bisa gagal sementara
-      // (timeout, rate limit) di testnet. Satu error tidak boleh mematikan seluruh misi —
-      // task ini dicoba lagi di tick berikutnya, task lain tetap jalan.
-      try {
-        const onchain = await getTask(t.taskId);
-
-        if (onchain.status === Status.Paid) {
-          t.paid = true;
-          continue;
-        }
-        if (onchain.status !== Status.Submitted) continue;
-        if (t.lastTriedProof === onchain.proofHash) continue; // sudah dinilai, menunggu perubahan
-
-        console.log(`\n📸 Task #${t.taskId}: bukti masuk dari ${onchain.worker}`);
-        t.lastTriedProof = onchain.proofHash;
-
-        let verdict: VerifierVerdict;
-        if (t.verifications >= config.maxVerificationsPerTask) {
-          verdict = {
-            taskId: t.taskId.toString(),
-            challengeMatched: false,
-            requirementsMatched: false,
-            duplicateDetected: false,
-            confidence: 0,
-            decision: "REJECT",
-            reasons: [`Batas ${config.maxVerificationsPerTask}x percobaan verifikasi tercapai untuk task ini`],
-            evidenceHash: onchain.proofHash,
-          };
-        } else {
-          t.verifications += 1;
-          try {
-            verdict = await evaluateProof(
-              {
-                taskId: t.taskId.toString(),
-                spec: t.spec,
-                proof: getProof(onchain.proofHash),
-                proofHash: onchain.proofHash,
-                submittedAt: onchain.submittedAt,
-                deadline: onchain.deadline,
-              },
-              { model, registry, confidenceThreshold: config.confidenceThreshold },
-            );
-            t.apiRetries = 0;
-          } catch (err) {
-            // Error API/jaringan (bukan keputusan) -> retry di tick berikutnya
-            t.apiRetries += 1;
-            console.log(`   ⚠️ Verifikasi error (${(err as Error).message}) — percobaan ${t.apiRetries}/${MAX_API_RETRIES}`);
-            if (t.apiRetries < MAX_API_RETRIES) {
-              t.lastTriedProof = null;
-              continue;
-            }
-            console.log(`   ⛔ ${MAX_API_RETRIES}x error API — task dibiarkan Submitted (worker terlindungi forceRelease)`);
-            continue;
-          }
-        }
-
-        t.verdict = verdict;
-
-        // O-09: verdict dikomit on-chain sebagai keccak256 dari field-field ini (urutan
-        // key TETAP — JSON.stringify di sini adalah definisi kanonik dari verdictHash).
-        // Audit log menyimpan field yang sama (lewat ...verdict + verifier di bawah),
-        // jadi siapa pun bisa reproduksi hash ini dan mencocokkannya ke event
-        // BountyReleased/TaskReopened di explorer.
-        const verdictHash = keccak256(
-          toHex(
-            JSON.stringify({
-              taskId: verdict.taskId,
-              decision: verdict.decision,
-              reasons: verdict.reasons,
-              confidence: verdict.confidence,
-              evidenceHash: verdict.evidenceHash,
-              verifier: model.name,
-            }),
-          ),
-        );
-
-        let txHash: string;
-        if (verdict.decision === "APPROVE") {
-          const receipt = await releaseBounty(t.taskId, verdictHash);
-          txHash = receipt.transactionHash;
-          t.payoutTxHash = txHash;
-          t.paid = true;
-          console.log(`   ✅ APPROVE (confidence ${verdict.confidence.toFixed(2)}) — ${verdict.reasons.join("; ")}`);
-          console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker} (tx ${txHash.slice(0, 14)}...)`);
-        } else {
-          const receipt = await rejectAndReopen(t.taskId, verdictHash);
-          txHash = receipt.transactionHash;
-          console.log(`   ❌ REJECT — ${verdict.reasons.join("; ")}`);
-          console.log(`   🔄 Task #${t.taskId} dibuka lagi untuk worker lain`);
-        }
-        appendAuditLog({
-          ts: new Date().toISOString(),
-          worker: onchain.worker,
-          txHash,
-          verifier: model.name,
-          verdictHash,
-          ...verdict,
-        });
-        saveMissionState(goal, tracked);
-      } catch (err) {
-        // RPC/chain gagal (getTask, atau tx release/reject) — bukan keputusan verifikasi.
-        // Reset lastTriedProof supaya proof yang sama dievaluasi ulang tick berikutnya.
-        // ponytail: bisa memicu 1 evaluasi ulang kalau yang gagal cuma tx-nya (verdict
-        // sudah ada) — dibatasi MAX_VERIFICATIONS_PER_TASK, upgrade kalau perlu retry-tx murni.
-        if (!t.paid) t.lastTriedProof = null;
-        console.log(`   ⚠️ Task #${t.taskId}: error RPC/chain (${(err as Error).message}) — dicoba lagi tick berikutnya`);
+/** Nomori & beri label tiap foto sebelum dikirim ke model vision — supaya model tahu peran
+ * tiap foto ("Foto 3 — packing dari penjual"), bukan sekadar tumpukan gambar tanpa konteks. */
+function buildImages(sections: ImageSection[]): ImageInput[] {
+  const images: ImageInput[] = [];
+  let n = 1;
+  for (const section of sections) {
+    for (const filename of section.photos) {
+      if (!filename) continue;
+      const img = loadEvidenceImage(filename, `Foto ${n} — ${section.label}`);
+      if (img) {
+        images.push(img);
+        n++;
       }
     }
   }
-
-  const report = buildReport(goal, tracked);
-  const reportPath = saveReport(report);
-  console.log(`\n🏁 MISSION COMPLETE — semua task terbayar.\n📄 Laporan: ${reportPath}\n`);
-  console.log(report);
+  return images;
 }
 
-function missionsDir(): string {
-  const dir = path.resolve("missions");
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+function shipmentImages(deal: DealRecord): ImageInput[] {
+  return buildImages([
+    { photos: deal.spec.listingPhotos, label: "listing dari penjual" },
+    { photos: deal.shipment?.packingPhotos ?? [], label: "packing dari penjual (bukti kirim)" },
+    { photos: [deal.shipment?.resiPhoto], label: "foto resi" },
+  ]);
 }
 
-/** Jejak keputusan agent yang bisa diaudit (JSONL) — bahan dashboard & bukti juri. */
-function appendAuditLog(entry: Record<string, unknown>) {
-  fs.appendFileSync(path.join(missionsDir(), "audit-log.jsonl"), JSON.stringify(entry) + "\n");
+function judgeImages(deal: DealRecord): ImageInput[] {
+  return buildImages([
+    { photos: deal.spec.listingPhotos, label: "listing dari penjual" },
+    { photos: deal.shipment?.packingPhotos ?? [], label: "packing dari penjual (bukti kirim)" },
+    { photos: [deal.shipment?.resiPhoto], label: "foto resi" },
+    { photos: deal.dispute?.photos ?? [], label: "unboxing dari pembeli (komplain)" },
+    { photos: deal.sellerResponse?.photos ?? [], label: "tanggapan penjual" },
+  ]);
 }
 
-function saveMissionState(goal: string, tracked: TrackedTask[]) {
-  const state = {
-    goal,
-    updatedAt: new Date().toISOString(),
-    tasks: tracked.map((t) => ({
-      taskId: t.taskId.toString(),
-      spec: t.spec,
-      paid: t.paid,
-      payoutTxHash: t.payoutTxHash,
-      lastVerdict: t.verdict
-        ? { decision: t.verdict.decision, reasons: t.verdict.reasons, confidence: t.verdict.confidence }
-        : null,
-    })),
-  };
-  fs.writeFileSync(path.join(missionsDir(), "current.json"), JSON.stringify(state, null, 2));
+async function maybeCheckShipment(deal: DealRecord, provider: AiProvider | null): Promise<void> {
+  const existing = readVerdictFile(deal.dealCode);
+  if (existing.shipmentCheck) return; // sudah pernah dicek — off-chain, sekali cukup
+
+  const check = await checkShipment(deal, shipmentImages(deal), provider);
+  writeVerdict(deal.dealCode, { ...existing, shipmentCheck: check });
+  const flag = check.itemVisible ? "barang terlihat" : "⚠️ barang TIDAK terlihat di foto packing";
+  console.log(`   📦 ${deal.dealCode}: cek pengiriman — ${flag}${check.warnings.length ? " — " + check.warnings.join("; ") : ""}`);
 }
 
-function buildReport(goal: string, tracked: TrackedTask[]): string {
-  const lines = [
-    `# Laporan Misi MANDOR`,
-    ``,
-    `**Goal:** ${goal}`,
-    `**Selesai:** ${new Date().toISOString()}`,
-    ``,
-    `| Task | Upah | Status | Catatan verifikasi |`,
-    `|---|---|---|---|`,
-  ];
-  for (const t of tracked) {
-    lines.push(
-      `| #${t.taskId} ${t.spec.title} | ${rupiah(t.spec.bountyIDRX)} | ${t.paid ? "DIBAYAR" : "-"} | ${t.verdict?.reasons.join("; ") ?? "-"} |`,
-    );
+/** Kirim resolve()/escalate() on-chain, lalu tulis txHash ke verdict file + audit log. */
+async function submitVerdict(deal: DealRecord, verdictHash: Hex, outcome: JudgeOutcome, commit: JudgeCommit): Promise<void> {
+  const dealId = deal.dealId as Hex;
+  const receipt = outcome === "ESCALATE" ? await escalate(dealId, verdictHash) : await resolve(dealId, outcome === "REFUND", verdictHash);
+  const txHash = receipt.transactionHash;
+
+  writeVerdict(deal.dealCode, { ...readVerdictFile(deal.dealCode), txHash });
+  appendAuditLog({ ts: new Date().toISOString(), dealCode: deal.dealCode, dealId, outcome, verdictHash, txHash, commit });
+
+  const icon = outcome === "REFUND" ? "💸" : outcome === "RELEASE" ? "✅" : "🙋";
+  console.log(`   ${icon} ${deal.dealCode}: ${outcome}${outcome !== "ESCALATE" ? ` (${commit.confidence.toFixed(2)})` : ""} — ${commit.reasons.join("; ")}`);
+  console.log(`      tx ${txHash.slice(0, 14)}... verdictHash ${verdictHash.slice(0, 14)}...`);
+}
+
+async function maybeJudge(
+  deal: DealRecord,
+  onchain: OnchainDeal,
+  provider: AiProvider | null,
+  registry: PhotoRegistry,
+): Promise<void> {
+  const existing = readVerdictFile(deal.dealCode);
+
+  if (existing.verdictHash && existing.txHash) return; // sudah selesai sepenuhnya
+
+  if (existing.verdictHash && existing.commit) {
+    // Proses sebelumnya crash SETELAH verdict ditulis tapi SEBELUM tx terkirim — kirim ulang
+    // tx dengan verdictHash yang SAMA (jangan panggil AI lagi, supaya hash tidak berubah-ubah
+    // di antara percobaan; itu yang membuatnya bisa dicocokkan publik ke event on-chain).
+    await submitVerdict(deal, existing.verdictHash, existing.commit.outcome, existing.commit);
+    return;
   }
-  return lines.join("\n");
+
+  const responded = !!deal.sellerResponse;
+  const windowElapsed = Math.floor(Date.now() / 1000) >= onchain.disputedAt + config.sellerResponseSeconds;
+  if (!responded && !windowElapsed) return; // masih menunggu tanggapan penjual
+
+  const verdict = await judgeDispute(deal, judgeImages(deal), {
+    provider,
+    confidenceThreshold: config.confidenceThreshold,
+    registry,
+    buyerPhotoFilenames: deal.dispute?.photos ?? [],
+  });
+
+  writeVerdict(deal.dealCode, { ...existing, commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
+  await submitVerdict(deal, verdict.verdictHash, verdict.outcome, verdict.commit);
 }
 
-function saveReport(report: string): string {
-  const p = path.join(missionsDir(), `report-${Date.now()}.md`);
-  fs.writeFileSync(p, report);
-  return p;
+async function processDeal(deal: DealRecord, provider: AiProvider | null, registry: PhotoRegistry): Promise<void> {
+  const onchain = await getDeal(deal.dealId as Hex);
+  if (onchain.status === Status.Shipped) {
+    await maybeCheckShipment(deal, provider);
+  } else if (onchain.status === Status.Disputed) {
+    await maybeJudge(deal, onchain, provider, registry);
+  }
+  // Funded / Escalated / status final: tidak ada aksi agent di tick ini.
+}
+
+/** 3x error API berturut-turut untuk deal yang sama -> lempar paksa ke arbiter manusia,
+ * tanpa perlu panggilan AI lagi (kita sudah tahu AI-nya tidak bisa dihubungi). */
+async function forceEscalate(deal: DealRecord, provider: AiProvider | null, attempts: number): Promise<void> {
+  const modelName = provider?.name ?? "mock";
+  const verdict = buildEscalateVerdict(deal, modelName, [
+    `Verifikasi AI gagal ${attempts}x berturut-turut (error jaringan/API) — dilempar ke arbiter manusia`,
+  ]);
+  writeVerdict(deal.dealCode, { ...readVerdictFile(deal.dealCode), commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
+  await submitVerdict(deal, verdict.verdictHash, "ESCALATE", verdict.commit);
+}
+
+export async function runDaemon(): Promise<void> {
+  console.log(`\n⚖️  Rekber AI arbiter mulai jalan.\n   Wallet AI arbiter: ${account.address}`);
+  const provider = createAiProvider(config);
+  console.log(`   Provider: ${provider?.name ?? "mock"} (ambang confidence ${config.confidenceThreshold})`);
+  console.log(`   Polling tiap ${config.pollMs / 1000}s dari ${config.dataDir}\n`);
+
+  const registry = new PhotoRegistry(path.join(config.dataDir, "photo-registry.json"));
+  const apiRetries = new Map<string, number>();
+
+  for (;;) {
+    await sleep(config.pollMs);
+    const deals = listDeals().filter((d) => !!d.txs.fund); // hanya deal yang sudah didanai on-chain
+
+    for (const deal of deals) {
+      try {
+        await processDeal(deal, provider, registry);
+        apiRetries.delete(deal.dealCode);
+      } catch (err) {
+        const attempts = (apiRetries.get(deal.dealCode) ?? 0) + 1;
+        apiRetries.set(deal.dealCode, attempts);
+        console.log(`   ⚠️ ${deal.dealCode}: error (${(err as Error).message}) — percobaan ${attempts}/${MAX_API_RETRIES}`);
+        if (attempts >= MAX_API_RETRIES) {
+          apiRetries.delete(deal.dealCode);
+          await forceEscalate(deal, provider, attempts).catch((err2) => {
+            console.log(
+              `   ⛔ ${deal.dealCode}: gagal escalate paksa juga (${(err2 as Error).message}) — dibiarkan Disputed (splitStale jadi jaring pengaman terakhir)`,
+            );
+          });
+        }
+      }
+    }
+  }
 }
