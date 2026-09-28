@@ -1,8 +1,8 @@
 {
-  "name": "mandor-worker-app",
+  "name": "rekber-ai-web",
   "version": "0.1.0",
   "private": true,
-  "description": "MANDOR worker PWA — tempat manusia jadi karyawan AI",
+  "description": "Rekber AI — escrow non-custodial dengan AI sebagai hakim sengketa",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3001",
     "build": "next build",
