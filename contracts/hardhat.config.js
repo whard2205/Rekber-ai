@@ -7,6 +7,9 @@ module.exports = {
     version: "0.8.24",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      // OpenZeppelin 5.6 (ERC20Permit -> Bytes.sol) pakai MCOPY (EIP-5656, Cancun).
+      // BSC mendukungnya sejak hardfork Tycho (Jun 2024) di mainnet & testnet.
+      evmVersion: "cancun",
     },
   },
   networks: {

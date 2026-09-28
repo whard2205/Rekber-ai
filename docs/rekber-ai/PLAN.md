@@ -262,11 +262,11 @@ Loop tiap `POLL_MS` (3000):
 
 > Setiap tahap: kerjakan → jalankan cek → centang → commit.
 
-- [ ] **R-00 · Setup branch & bersih-bersih**
+- [x] **R-00 · Setup branch & bersih-bersih**
   `git status` dulu. `git tag mandor-final` (di HEAD `feat/submission-ready`), lalu `git checkout -b rekber-ai` — file `docs/rekber-ai/*` yang belum ter-track ikut terbawa; commit di tahap ini. Pindahkan `BLUEPRINT.md` (MANDOR), `docs/superpowers/`, `docs/review/` → `docs/archive/mandor/`. `git mv worker-app web`, lalu update script/path yang menyebut `worker-app` (cukup sampai typecheck hijau — kode MANDOR-nya toh dihapus di R-02/R-07). Tambah `data/` ke `.gitignore`. Perubahan lama `worker-app/tsconfig.json` (hanya newline) boleh ikut ter-commit bersama rename.
   *Cek:* `git status` bersih setelah commit; `web` typecheck masih lulus.
 
-- [ ] **R-01 · MockIDRX + permit**
+- [x] **R-01 · MockIDRX + permit**
   *Cek:* test: mint, decimals=0 (§3.1), permit dengan tanda tangan viem/ethers → allowance terset.
 
 - [ ] **R-02 · RekberEscrow + test lengkap (TDD)**
