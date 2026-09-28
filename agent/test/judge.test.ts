@@ -241,13 +241,11 @@ test("verdictHash deterministik dan cocok dengan hitungan ulang dari commit ters
     registry: tmpRegistry(),
     buyerPhotoFilenames: ["unboxing-a.jpg"],
   });
-  const v2 = await judgeDispute(deal, images, {
-    provider: null,
-    confidenceThreshold: 0.85,
-    registry: tmpRegistry(),
-    buyerPhotoFilenames: ["unboxing-a.jpg"],
-  });
-  assert.equal(v1.verdictHash, v2.verdictHash);
+  // Catatan: tidak membandingkan verdictHash dari dua panggilan judgeDispute terpisah —
+  // commit.decidedAt (jam sungguhan) berbeda antar panggilan, jadi hash-nya MEMANG beda.
+  // Itu bukan bug: tiap putusan nyata memang terjadi di detik yang unik. Yang benar-benar
+  // harus deterministik (dan yang benar-benar dipakai siapa pun untuk verifikasi) adalah:
+  // hash dari SATU commit yang sama selalu sama kalau dihitung ulang.
 
   // Siapa pun (pembeli/penjual/juri) bisa menghitung ulang hash dari commit yang tersimpan
   // di verdict file dan mencocokkannya ke event on-chain — ini yang mereka lakukan.

@@ -307,7 +307,7 @@ Loop tiap `POLL_MS` (3000):
   Bayar (permit + Fund) → kirim (Ship) → konfirmasi (Confirm) / komplain (Dispute) → tanggapan penjual → tampilan putusan, timeline, countdown, "Cek hash sendiri". Semua pesan error dalam Bahasa Indonesia (reuse & perluas `translateChainError` dengan error §3.2).
   *Cek:* manual lokal di 2 browser (satu penjual, satu pembeli/incognito), dengan agent mock berjalan: kasus RELEASE (konfirmasi), REFUND (`BATU`), RELEASE via hakim (`SESUAI`), ESCALATE → `human-resolve.ts` → selesai.
 
-- [ ] **R-10 · Web: `/panggung`**
+- [x] **R-10 · Web: `/panggung`**
   *Cek:* di layar 1920×1080 terbaca dari jauh; update ≤ 3 detik setelah event; QR membuka deal demo.
 
 - [ ] **R-11 · Smoke test e2e otomatis (lokal, AI mock)**
