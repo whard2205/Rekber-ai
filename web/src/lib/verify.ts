@@ -1,5 +1,5 @@
 import "server-only";
-import { verifyTypedData, type Address, type Hex } from "viem";
+import { verifyTypedData, verifyMessage, type Address, type Hex } from "viem";
 import { rekberDomain, OFFER_TYPES, FUND_TYPES, ACT_TYPES } from "./eip712";
 
 /** Verifikasi server-side tanda tangan sebelum tx dikirim (gas relayer tidak terbuang,
@@ -79,4 +79,16 @@ export async function verifyAct(args: {
   });
   if (!valid) fail("Tanda tangan tidak valid — coba ulangi");
   return args.signer;
+}
+
+/** Tanggapan penjual (§3.6 respond) TIDAK pakai typed data — cukup signMessage biasa atas
+ * responseHash mentah (off-chain saja, tidak ada tx, jadi tidak perlu terikat domain kontrak). */
+export async function verifySellerResponse(args: { responseHash: Hex; seller: Address; sig: Hex }): Promise<Address> {
+  const valid = await verifyMessage({
+    address: args.seller,
+    message: { raw: args.responseHash },
+    signature: args.sig,
+  });
+  if (!valid) fail("Tanda tangan tanggapan bukan dari penjual");
+  return args.seller;
 }

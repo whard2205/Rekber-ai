@@ -70,6 +70,22 @@ export function badBytes32(v: unknown): string | null {
   return null;
 }
 
+/** Deadline tanda tangan (detik epoch) — angka wajar, belum kedaluwarsa terlalu jauh
+ * (server tetap yang menentukan valid/tidaknya lewat verify*, ini cuma sanity check bentuk). */
+export function badDeadline(v: unknown): string | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return "Batas waktu tanda tangan tidak valid";
+  return null;
+}
+
+/** Tanda tangan 65-byte (0x + 130 hex), ATAU string kosong "0x" (permit dilewati —
+ * pembeli sudah approve() manual, jalur token tanpa permit seperti IDRX asli). */
+export function badSigOrEmpty(v: unknown): string | null {
+  if (typeof v !== "string") return "Format tanda tangan tidak valid";
+  if (v === "0x" || v === "") return null;
+  if (!/^0x[0-9a-fA-F]{130}$/.test(v)) return "Format tanda tangan tidak valid";
+  return null;
+}
+
 export function asAddress(v: string): Address {
   return v as Address;
 }

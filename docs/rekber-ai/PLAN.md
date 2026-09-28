@@ -303,7 +303,7 @@ Loop tiap `POLL_MS` (3000):
 - [x] **R-08 · Web: `/jual` + `/api/evidence` + `/api/deals/new` + `/api/checklist` + publish `POST /api/deals/[code]`**
   *Cek:* manual lokal — buat deal dengan AI mock & aimlapi (1 panggilan nyata), link/QR/WA muncul, deal file & specHash sesuai §3.3, Offer tersimpan dan lolos verifikasi; mengubah harga di deal file secara manual lalu mencoba fund → gagal `BadSignature` (bukti server tidak bisa mengubah harga).
 
-- [ ] **R-09 · Web: `/d/[code]` alur penuh**
+- [x] **R-09 · Web: `/d/[code]` alur penuh**
   Bayar (permit + Fund) → kirim (Ship) → konfirmasi (Confirm) / komplain (Dispute) → tanggapan penjual → tampilan putusan, timeline, countdown, "Cek hash sendiri". Semua pesan error dalam Bahasa Indonesia (reuse & perluas `translateChainError` dengan error §3.2).
   *Cek:* manual lokal di 2 browser (satu penjual, satu pembeli/incognito), dengan agent mock berjalan: kasus RELEASE (konfirmasi), REFUND (`BATU`), RELEASE via hakim (`SESUAI`), ESCALATE → `human-resolve.ts` → selesai.
 
