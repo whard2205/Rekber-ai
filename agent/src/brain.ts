@@ -48,6 +48,61 @@ function firstText(response: Anthropic.Message): string {
   return block.text;
 }
 
+const PLANNER_SYSTEM = [
+  "Kamu adalah MANDOR, AI agent yang mempekerjakan manusia untuk tugas dunia fisik yang tidak bisa dilakukan AI.",
+  "Pecah goal user menjadi task foto/verifikasi sederhana yang bisa dikerjakan satu orang dengan HP dalam <10 menit.",
+  "Satu task = satu bukti foto. Kalau goal butuh N bukti, buat N task identik.",
+  "Setiap task akan diberi kode tantangan oleh sistem; sebutkan di instructions bahwa worker harus menuliskan kode itu di kertas/layar dan mengikutkannya di foto.",
+  "Tulis instructions dalam bahasa Indonesia yang jelas untuk orang awam. Kriteria harus objektif dan bisa dicek dari fotonya saja.",
+  "Upah wajar per task: Rp 3.000 - Rp 20.000 (bounty_idr 300000 - 2000000).",
+].join("\n");
+
+type PlanResult = {
+  tasks: { title: string; instructions: string; acceptance_criteria: string[]; bounty_idr: number }[];
+};
+
+async function planViaAnthropic(goal: string): Promise<PlanResult> {
+  const response = await client.messages.create({
+    model: config.anthropicModel,
+    max_tokens: 4096, // output sengaja pendek: daftar task JSON
+    thinking: { type: "adaptive" },
+    system: PLANNER_SYSTEM,
+    messages: [{ role: "user", content: `Goal: ${goal}` }],
+    output_config: { format: { type: "json_schema", schema: PLAN_SCHEMA } },
+  });
+  return JSON.parse(firstText(response)) as PlanResult;
+}
+
+/** Planning lewat endpoint kompatibel OpenAI chat/completions (AI/ML API — proxy
+ * ke banyak vendor). Sama polanya dengan OpenAICompatibleVerifier di verifier.ts:
+ * REST resmi via fetch, tanpa dependency tambahan. */
+async function planViaAimlApi(goal: string): Promise<PlanResult> {
+  const res = await fetch("https://api.aimlapi.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.aimlApiKey}` },
+    body: JSON.stringify({
+      model: config.aimlApiModel,
+      max_tokens: 4096,
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "plan", strict: true, schema: PLAN_SCHEMA },
+      },
+      messages: [
+        { role: "system", content: PLANNER_SYSTEM },
+        { role: "user", content: `Goal: ${goal}` },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`aimlapi:${config.aimlApiModel} API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = (await res.json()) as {
+    choices: { message: { content: string | null; refusal?: string | null } }[];
+  };
+  const msg = data.choices[0]?.message;
+  if (!msg || msg.refusal) throw new Error(`Model menolak permintaan: ${msg?.refusal ?? "kosong"}`);
+  if (!msg.content) throw new Error("Respons aimlapi kosong");
+  return JSON.parse(msg.content) as PlanResult;
+}
+
 /** Pecah goal user menjadi task-task yang butuh manusia di dunia fisik.
  * Field challenge diisi placeholder — loop yang membuat kode tantangan
  * (anti-cheat tidak boleh bergantung pada output model). */
@@ -63,25 +118,9 @@ export async function planTasks(goal: string): Promise<HumanTaskSpec[]> {
     }));
   }
 
-  const response = await client.messages.create({
-    model: config.anthropicModel,
-    max_tokens: 4096, // output sengaja pendek: daftar task JSON
-    thinking: { type: "adaptive" },
-    system: [
-      "Kamu adalah MANDOR, AI agent yang mempekerjakan manusia untuk tugas dunia fisik yang tidak bisa dilakukan AI.",
-      "Pecah goal user menjadi task foto/verifikasi sederhana yang bisa dikerjakan satu orang dengan HP dalam <10 menit.",
-      "Satu task = satu bukti foto. Kalau goal butuh N bukti, buat N task identik.",
-      "Setiap task akan diberi kode tantangan oleh sistem; sebutkan di instructions bahwa worker harus menuliskan kode itu di kertas/layar dan mengikutkannya di foto.",
-      "Tulis instructions dalam bahasa Indonesia yang jelas untuk orang awam. Kriteria harus objektif dan bisa dicek dari fotonya saja.",
-      "Upah wajar per task: Rp 3.000 - Rp 20.000 (bounty_idr 300000 - 2000000).",
-    ].join("\n"),
-    messages: [{ role: "user", content: `Goal: ${goal}` }],
-    output_config: { format: { type: "json_schema", schema: PLAN_SCHEMA } },
-  });
+  const parsed =
+    config.plannerProvider === "aimlapi" ? await planViaAimlApi(goal) : await planViaAnthropic(goal);
 
-  const parsed = JSON.parse(firstText(response)) as {
-    tasks: { title: string; instructions: string; acceptance_criteria: string[]; bounty_idr: number }[];
-  };
   return parsed.tasks.map((t) => ({
     title: t.title,
     instructions: t.instructions,

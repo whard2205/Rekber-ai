@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { existsSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { keccak256 } from "viem";
 import { getTask, Status, submitProofFor, translateChainError } from "@/lib/chain";
 import { config } from "@/lib/config";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
-const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB || 8) * 1024 * 1024;
+// O-05: foto sudah di-resize di browser (task/[id]/page.tsx handleFile), jadi batas ini
+// hanya jaring pengaman terakhir — turunkan dari 8 ke 6 MB (default MAX_PROOF_BASE64_CHARS
+// di agent/src/verifier.ts adalah 8 MB biner, sisakan headroom).
+const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB || 6) * 1024 * 1024;
 const MIME_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
@@ -68,6 +71,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const receipt = await submitProofFor(taskId, worker as `0x${string}`, proofHash);
     return NextResponse.json({ proofHash, txHash: receipt.transactionHash });
   } catch (err) {
+    // O-05: tx gagal setelah file ditulis -> hapus, supaya retry dengan foto yang
+    // sama tidak kena 409 "sudah pernah dipakai" secara palsu.
+    await unlink(filePath).catch(() => {});
     return NextResponse.json({ error: translateChainError(err) }, { status: 400 });
   }
 }

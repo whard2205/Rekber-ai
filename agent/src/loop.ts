@@ -91,81 +91,93 @@ export async function runMission(goal: string): Promise<void> {
     await sleep(POLL_MS);
     for (const t of tracked) {
       if (t.paid) continue;
-      const onchain = await getTask(t.taskId);
+      // O-04: RPC publik (getTask/releaseBounty/rejectAndReopen) bisa gagal sementara
+      // (timeout, rate limit) di testnet. Satu error tidak boleh mematikan seluruh misi —
+      // task ini dicoba lagi di tick berikutnya, task lain tetap jalan.
+      try {
+        const onchain = await getTask(t.taskId);
 
-      if (onchain.status === Status.Paid) {
-        t.paid = true;
-        continue;
-      }
-      if (onchain.status !== Status.Submitted) continue;
-      if (t.lastTriedProof === onchain.proofHash) continue; // sudah dinilai, menunggu perubahan
-
-      console.log(`\n📸 Task #${t.taskId}: bukti masuk dari ${onchain.worker}`);
-      t.lastTriedProof = onchain.proofHash;
-
-      let verdict: VerifierVerdict;
-      if (t.verifications >= config.maxVerificationsPerTask) {
-        verdict = {
-          taskId: t.taskId.toString(),
-          challengeMatched: false,
-          requirementsMatched: false,
-          duplicateDetected: false,
-          confidence: 0,
-          decision: "REJECT",
-          reasons: [`Batas ${config.maxVerificationsPerTask}x percobaan verifikasi tercapai untuk task ini`],
-          evidenceHash: onchain.proofHash,
-        };
-      } else {
-        t.verifications += 1;
-        try {
-          verdict = await evaluateProof(
-            {
-              taskId: t.taskId.toString(),
-              spec: t.spec,
-              proof: getProof(onchain.proofHash),
-              proofHash: onchain.proofHash,
-              submittedAt: onchain.submittedAt,
-              deadline: onchain.deadline,
-            },
-            { model, registry, confidenceThreshold: config.confidenceThreshold },
-          );
-          t.apiRetries = 0;
-        } catch (err) {
-          // Error API/jaringan (bukan keputusan) -> retry di tick berikutnya
-          t.apiRetries += 1;
-          console.log(`   ⚠️ Verifikasi error (${(err as Error).message}) — percobaan ${t.apiRetries}/${MAX_API_RETRIES}`);
-          if (t.apiRetries < MAX_API_RETRIES) {
-            t.lastTriedProof = null;
-            continue;
-          }
-          console.log(`   ⛔ ${MAX_API_RETRIES}x error API — task dibiarkan Submitted (worker terlindungi forceRelease)`);
+        if (onchain.status === Status.Paid) {
+          t.paid = true;
           continue;
         }
-      }
+        if (onchain.status !== Status.Submitted) continue;
+        if (t.lastTriedProof === onchain.proofHash) continue; // sudah dinilai, menunggu perubahan
 
-      t.verdict = verdict;
-      let txHash: string;
-      if (verdict.decision === "APPROVE") {
-        const receipt = await releaseBounty(t.taskId);
-        txHash = receipt.transactionHash;
-        t.payoutTxHash = txHash;
-        t.paid = true;
-        console.log(`   ✅ APPROVE (confidence ${verdict.confidence.toFixed(2)}) — ${verdict.reasons.join("; ")}`);
-        console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker} (tx ${txHash.slice(0, 14)}...)`);
-      } else {
-        const receipt = await rejectAndReopen(t.taskId);
-        txHash = receipt.transactionHash;
-        console.log(`   ❌ REJECT — ${verdict.reasons.join("; ")}`);
-        console.log(`   🔄 Task #${t.taskId} dibuka lagi untuk worker lain`);
+        console.log(`\n📸 Task #${t.taskId}: bukti masuk dari ${onchain.worker}`);
+        t.lastTriedProof = onchain.proofHash;
+
+        let verdict: VerifierVerdict;
+        if (t.verifications >= config.maxVerificationsPerTask) {
+          verdict = {
+            taskId: t.taskId.toString(),
+            challengeMatched: false,
+            requirementsMatched: false,
+            duplicateDetected: false,
+            confidence: 0,
+            decision: "REJECT",
+            reasons: [`Batas ${config.maxVerificationsPerTask}x percobaan verifikasi tercapai untuk task ini`],
+            evidenceHash: onchain.proofHash,
+          };
+        } else {
+          t.verifications += 1;
+          try {
+            verdict = await evaluateProof(
+              {
+                taskId: t.taskId.toString(),
+                spec: t.spec,
+                proof: getProof(onchain.proofHash),
+                proofHash: onchain.proofHash,
+                submittedAt: onchain.submittedAt,
+                deadline: onchain.deadline,
+              },
+              { model, registry, confidenceThreshold: config.confidenceThreshold },
+            );
+            t.apiRetries = 0;
+          } catch (err) {
+            // Error API/jaringan (bukan keputusan) -> retry di tick berikutnya
+            t.apiRetries += 1;
+            console.log(`   ⚠️ Verifikasi error (${(err as Error).message}) — percobaan ${t.apiRetries}/${MAX_API_RETRIES}`);
+            if (t.apiRetries < MAX_API_RETRIES) {
+              t.lastTriedProof = null;
+              continue;
+            }
+            console.log(`   ⛔ ${MAX_API_RETRIES}x error API — task dibiarkan Submitted (worker terlindungi forceRelease)`);
+            continue;
+          }
+        }
+
+        t.verdict = verdict;
+        let txHash: string;
+        if (verdict.decision === "APPROVE") {
+          const receipt = await releaseBounty(t.taskId);
+          txHash = receipt.transactionHash;
+          t.payoutTxHash = txHash;
+          t.paid = true;
+          console.log(`   ✅ APPROVE (confidence ${verdict.confidence.toFixed(2)}) — ${verdict.reasons.join("; ")}`);
+          console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker} (tx ${txHash.slice(0, 14)}...)`);
+        } else {
+          const receipt = await rejectAndReopen(t.taskId);
+          txHash = receipt.transactionHash;
+          console.log(`   ❌ REJECT — ${verdict.reasons.join("; ")}`);
+          console.log(`   🔄 Task #${t.taskId} dibuka lagi untuk worker lain`);
+        }
+        appendAuditLog({
+          ts: new Date().toISOString(),
+          worker: onchain.worker,
+          txHash,
+          verifier: model.name,
+          ...verdict,
+        });
+        saveMissionState(goal, tracked);
+      } catch (err) {
+        // RPC/chain gagal (getTask, atau tx release/reject) — bukan keputusan verifikasi.
+        // Reset lastTriedProof supaya proof yang sama dievaluasi ulang tick berikutnya.
+        // ponytail: bisa memicu 1 evaluasi ulang kalau yang gagal cuma tx-nya (verdict
+        // sudah ada) — dibatasi MAX_VERIFICATIONS_PER_TASK, upgrade kalau perlu retry-tx murni.
+        if (!t.paid) t.lastTriedProof = null;
+        console.log(`   ⚠️ Task #${t.taskId}: error RPC/chain (${(err as Error).message}) — dicoba lagi tick berikutnya`);
       }
-      appendAuditLog({
-        ts: new Date().toISOString(),
-        worker: onchain.worker,
-        txHash,
-        verifier: model.name,
-        ...verdict,
-      });
-      saveMissionState(goal, tracked);
     }
   }
 

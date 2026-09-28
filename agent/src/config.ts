@@ -32,6 +32,11 @@ export const config = {
   // Verifikasi boleh pakai model berbeda dari planning (mis. lebih murah).
   verifierModel: process.env.VERIFIER_MODEL || process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
   mockBrain: process.env.MANDOR_MOCK_BRAIN === "1",
+  // Provider planning (goal -> daftar task): anthropic | aimlapi | mock.
+  // Default mengikuti MANDOR_MOCK_BRAIN; bisa dipisah dari verifierProvider (mis. planning
+  // aimlapi + verifikasi anthropic, atau sebaliknya).
+  plannerProvider: (process.env.PLANNER_PROVIDER ||
+    (process.env.MANDOR_MOCK_BRAIN === "1" ? "mock" : "anthropic")) as "anthropic" | "aimlapi" | "mock",
   // Provider verifikasi: anthropic | openai | aimlapi | mock.
   // Default mengikuti MANDOR_MOCK_BRAIN; bisa dipisah (mis. planning mock + verifikasi aimlapi/openai).
   verifierProvider: (process.env.VERIFIER_PROVIDER ||
@@ -56,8 +61,13 @@ export const config = {
 if (!config.escrowAddress || !config.tokenAddress) {
   throw new Error("ESCROW_ADDRESS/TOKEN_ADDRESS belum diset dan deployments/localhost.json tidak ditemukan");
 }
-if (!config.mockBrain && !process.env.ANTHROPIC_API_KEY) {
-  throw new Error("ANTHROPIC_API_KEY wajib diisi (atau set MANDOR_MOCK_BRAIN=1 untuk uji loop offline)");
+if (config.plannerProvider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
+  throw new Error(
+    "PLANNER_PROVIDER=anthropic butuh ANTHROPIC_API_KEY (atau set PLANNER_PROVIDER=aimlapi, atau MANDOR_MOCK_BRAIN=1 untuk uji loop offline)",
+  );
+}
+if (config.plannerProvider === "aimlapi" && !config.aimlApiKey) {
+  throw new Error("PLANNER_PROVIDER=aimlapi butuh AIMLAPI_API_KEY");
 }
 if (config.verifierProvider === "openai" && !config.openaiApiKey) {
   throw new Error("VERIFIER_PROVIDER=openai butuh OPENAI_API_KEY");
