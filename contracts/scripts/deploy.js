@@ -2,36 +2,59 @@ const fs = require("fs");
 const path = require("path");
 const { ethers, network } = require("hardhat");
 
-// Deploy MockIDRX + TaskEscrow.
-// Env (opsional): RELAYER_ADDRESS, VERIFY_WINDOW (detik), CLAIM_WINDOW (detik),
-// AGENT_ADDRESS (penerima mint awal)
+// Deploy MockIDRX + RekberEscrow.
+// Env (lihat .env.example): AI_ARBITER_ADDRESS, HUMAN_ARBITER_ADDRESS, FEE_RECIPIENT,
+// FEE_BPS, SHIP_WINDOW, CONFIRM_WINDOW, DISPUTE_WINDOW (semua opsional di localhost —
+// default hardhat account #1 = aiArbiter, #0 = deployer/humanArbiter/feeRecipient, sesuai
+// docs/rekber-ai/PLAN.md §3.7 "Lokal"; wajib diisi eksplisit di testnet/mainnet).
+// Tidak minting saat deploy — saldo demo pembeli datang dari /api/faucet (web).
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  const relayer = process.env.RELAYER_ADDRESS || deployer.address;
-  const verifyWindow = Number(process.env.VERIFY_WINDOW || 24 * 60 * 60);
-  // O-10: task Claimed tanpa proof selama ini bisa diambil alih worker lain.
-  const claimWindow = Number(process.env.CLAIM_WINDOW || 10 * 60);
-  const agent = process.env.AGENT_ADDRESS || deployer.address;
+  const [deployer, hardhatAiArbiter] = await ethers.getSigners();
+  const isLocal = network.name === "localhost" || network.name === "hardhat";
+
+  const aiArbiter = process.env.AI_ARBITER_ADDRESS || (isLocal ? hardhatAiArbiter.address : "");
+  const humanArbiter = process.env.HUMAN_ARBITER_ADDRESS || (isLocal ? deployer.address : "");
+  const feeRecipient = process.env.FEE_RECIPIENT || (isLocal ? deployer.address : "");
+  if (!aiArbiter || !humanArbiter || !feeRecipient) {
+    throw new Error(
+      "AI_ARBITER_ADDRESS, HUMAN_ARBITER_ADDRESS, FEE_RECIPIENT wajib diisi di luar localhost (lihat .env.example)",
+    );
+  }
+
+  const feeBps = Number(process.env.FEE_BPS || 100);
+  const shipWindow = Number(process.env.SHIP_WINDOW || 1800);
+  const confirmWindow = Number(process.env.CONFIRM_WINDOW || 600);
+  const disputeWindow = Number(process.env.DISPUTE_WINDOW || 1800);
 
   const idrx = await (await ethers.getContractFactory("MockIDRX")).deploy();
   await idrx.waitForDeployment();
 
   const escrow = await (
-    await ethers.getContractFactory("TaskEscrow")
-  ).deploy(relayer, verifyWindow, claimWindow);
+    await ethers.getContractFactory("RekberEscrow")
+  ).deploy(
+    await idrx.getAddress(),
+    aiArbiter,
+    humanArbiter,
+    feeRecipient,
+    feeBps,
+    shipWindow,
+    confirmWindow,
+    disputeWindow,
+  );
   await escrow.waitForDeployment();
-
-  // Modal awal agent: Rp 10.000.000,00 (IDRX 2 desimal)
-  await (await idrx.mint(agent, 1_000_000_000n)).wait();
+  const receipt = await escrow.deploymentTransaction().wait();
 
   const out = {
     network: network.name,
     chainId: Number((await ethers.provider.getNetwork()).chainId),
     escrow: await escrow.getAddress(),
-    idrx: await idrx.getAddress(),
-    relayer,
-    verifyWindow,
-    claimWindow,
+    token: await idrx.getAddress(),
+    aiArbiter,
+    humanArbiter,
+    feeRecipient,
+    feeBps,
+    windows: { ship: shipWindow, confirm: confirmWindow, dispute: disputeWindow },
+    deployBlock: receipt.blockNumber,
     deployedAt: new Date().toISOString(),
   };
 

@@ -276,7 +276,7 @@ Loop tiap `POLL_MS` (3000):
   Tulis test dulu, lalu kontrak. Minimal mencakup: setiap fungsi di tabel §3.2 (jalur sukses + setiap revert), jalur tanda tangan (sig pihak lain ditolak `BadSignature`, sig kedaluwarsa `SignatureExpired`, replay setelah status berubah `InvalidState`, relayer mengganti seller/amount/data → `BadSignature`), **Offer**: fund dengan seller/amount/specHash yang berbeda dari Offer → `BadSignature`, Offer kedaluwarsa → `SignatureExpired`, Offer ditandatangani bukan-seller → `BadSignature`; permit yang sudah di-front-run tetap berhasil fund; `v == 0` (tanpa permit, pembeli sudah `approve`) berhasil fund; token 0 desimal (amount `8_500_000`), matematika fee (1% ke feeRecipient, 99% ke penjual), refund tanpa fee, split ganjil (amount 1 → pembeli 0, penjual 1), semua timeout, `resolve` oleh humanArbiter pada `Escalated`, aiArbiter **tidak bisa** resolve `Escalated`, constructor menolak `feeBps > 500` dan alamat nol. Hapus `TaskEscrow.sol` + test-nya.
   *Cek:* `npx hardhat test` hijau, ≥ 35 test, 0 test MANDOR tersisa.
 
-- [ ] **R-03 · Deploy script + export ABI**
+- [x] **R-03 · Deploy script + export ABI**
   `deploy.js` membaca env §3.7 (default lokal = akun hardhat #0/#1), menulis `deployments/<network>.json` `{network, chainId, escrow, token, aiArbiter, humanArbiter, feeRecipient, feeBps, windows, deployBlock, deployedAt}`. (Tidak perlu mint saat deploy — saldo demo datang dari `/api/faucet`.) `export-abi.js` → `agent/src/abi/{RekberEscrow,MockIDRX}.json` dan `web/src/abi/...`.
   *Cek:* `npm run node` + `npm run deploy:localhost` + `npm run export-abi` sukses; `localhost.json` berisi alamat baru.
 

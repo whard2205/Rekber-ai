@@ -1,8 +1,8 @@
 {
-  "name": "mandor-contracts",
+  "name": "rekber-ai-contracts",
   "version": "0.1.0",
   "private": true,
-  "description": "MANDOR TaskEscrow smart contracts",
+  "description": "Rekber AI — RekberEscrow smart contracts",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",

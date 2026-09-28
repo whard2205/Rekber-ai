@@ -1,12 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 
-// Salin ABI hasil compile ke agent/src/abi/ dan worker-app/src/abi/ supaya
+// Salin ABI hasil compile ke agent/src/abi/ dan web/src/abi/ supaya
 // keduanya tidak bergantung pada artifacts hardhat.
-const contracts = ["TaskEscrow", "MockIDRX"];
+const contracts = ["RekberEscrow", "MockIDRX"];
 const outDirs = [
   path.join(__dirname, "..", "..", "agent", "src", "abi"),
-  path.join(__dirname, "..", "..", "worker-app", "src", "abi"),
+  path.join(__dirname, "..", "..", "web", "src", "abi"),
 ];
 
 for (const name of contracts) {
