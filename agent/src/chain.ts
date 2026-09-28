@@ -6,11 +6,12 @@ import {
   createWalletClient,
   http,
   defineChain,
+  parseEventLogs,
   type Abi,
   type Address,
   type Hex,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { nonceManager, privateKeyToAccount } from "viem/accounts";
 import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
 import { config } from "./config.js";
 
@@ -42,7 +43,9 @@ export function resolveChain(chainId: number, rpcUrl: string) {
 }
 
 const chain = resolveChain(config.chainId, config.rpcUrl);
-export const account = privateKeyToAccount(config.agentPrivateKey);
+// O-08: nonceManager sebagai jaring pengaman kalau loop pemrosesan task berubah jadi
+// paralel di masa depan (saat ini sekuensial, jadi tidak wajib, tapi murah dan aman).
+export const account = privateKeyToAccount(config.agentPrivateKey, { nonceManager });
 export const publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) });
 export const walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) });
 
@@ -94,14 +97,10 @@ export async function postTask(bounty: bigint, specHash: Hex, deadline: number):
     specHash,
     deadline,
   ]);
-  const logs = await publicClient.getContractEvents({
-    address: config.escrowAddress,
-    abi: escrowAbi,
-    eventName: "TaskPosted",
-    fromBlock: receipt.blockNumber,
-    toBlock: receipt.blockNumber,
-  });
-  const mine = logs.find((l) => l.transactionHash === receipt.transactionHash);
+  // O-12: taskId diparsing langsung dari receipt.logs, bukan query eth_getLogs terpisah —
+  // public RPC di-load-balance bisa tertinggal satu node dan gagal menemukan event yang
+  // baru saja di-mine di node lain. parseEventLogs tidak butuh panggilan RPC tambahan.
+  const [mine] = parseEventLogs({ abi: escrowAbi, eventName: "TaskPosted", logs: receipt.logs });
   if (!mine) throw new Error("TaskPosted event tidak ditemukan di receipt");
   return (mine.args as { taskId: bigint }).taskId;
 }

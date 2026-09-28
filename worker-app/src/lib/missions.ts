@@ -59,12 +59,26 @@ export interface AuditEntry {
   reasons: string[];
 }
 
-/** Jejak keputusan agent (JSONL, ditulis agent/src/loop.ts) — bahan activity feed panggung. */
-export function readAuditLog(limit = 20): AuditEntry[] {
+function auditLogLines(): string[] {
   const file = path.join(path.dirname(config.missionsFile), "audit-log.jsonl");
   if (!fs.existsSync(file)) return [];
-  const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
-  return lines.slice(-limit).reverse().map((l) => JSON.parse(l) as AuditEntry);
+  return fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
+}
+
+/** Jejak keputusan agent (JSONL, ditulis agent/src/loop.ts) — bahan activity feed panggung. */
+export function readAuditLog(limit = 20): AuditEntry[] {
+  return auditLogLines().slice(-limit).reverse().map((l) => JSON.parse(l) as AuditEntry);
+}
+
+/** Riwayat gaji untuk satu worker, dibaca dari audit log (bukan eth_getLogs) —
+ * O-07: public RPC BSC testnet membatasi range eth_getLogs, dan fromBlock:0 gagal
+ * begitu range-nya sudah jutaan blok setelah deploy. Audit log sudah memuat
+ * taskId + txHash per APPROVE, jadi tidak perlu query log sama sekali. */
+export function readAuditLogFor(worker: string): AuditEntry[] {
+  const w = worker.toLowerCase();
+  return auditLogLines()
+    .map((l) => JSON.parse(l) as AuditEntry)
+    .filter((e) => e.decision === "APPROVE" && e.worker.toLowerCase() === w);
 }
 
 export function readMissionSpecs(): Map<string, HumanTaskSpec> {

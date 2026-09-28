@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getPayoutsFor } from "@/lib/chain";
-import { readMissionSpecs } from "@/lib/missions";
+import { getTask } from "@/lib/chain";
+import { readAuditLogFor, readMissionSpecs } from "@/lib/missions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,25 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "worker query param tidak valid" }, { status: 400 });
   }
 
+  // O-07: riwayat dibangun dari audit-log.jsonl (bukan eth_getLogs dari block 0,
+  // yang gagal di testnet begitu range-nya besar). Setiap APPROVE di audit log
+  // sudah memuat taskId + txHash; bounty diambil dari on-chain getTask.
   const specs = readMissionSpecs();
-  const payouts = await getPayoutsFor(worker as `0x${string}`);
-  const items = payouts.map((p) => ({
-    taskId: p.taskId.toString(),
-    title: specs.get(p.taskId.toString())?.title ?? `Task #${p.taskId}`,
-    amount: p.amount.toString(),
-    txHash: p.transactionHash,
-  }));
-  const total = payouts.reduce((sum, p) => sum + p.amount, 0n).toString();
-  return NextResponse.json({ items, total });
+  const approvals = readAuditLogFor(worker);
+
+  let total = 0n;
+  const items = [];
+  for (const entry of approvals) {
+    const onchain = await getTask(BigInt(entry.taskId)).catch(() => null);
+    if (!onchain) continue; // task tidak ditemukan on-chain (mis. chain di-reset) — lewati
+    total += onchain.bounty;
+    items.push({
+      taskId: entry.taskId,
+      title: specs.get(entry.taskId)?.title ?? `Task #${entry.taskId}`,
+      amount: onchain.bounty.toString(),
+      txHash: entry.txHash,
+    });
+  }
+
+  return NextResponse.json({ items, total: total.toString() });
 }

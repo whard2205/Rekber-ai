@@ -12,7 +12,7 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { nonceManager, privateKeyToAccount } from "viem/accounts";
 import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
 import { config } from "./config";
 
@@ -43,7 +43,10 @@ function resolveChain(chainId: number, rpcUrl: string) {
 }
 
 const chain = resolveChain(config.chainId, config.rpcUrl);
-const relayer = privateKeyToAccount(config.relayerPrivateKey);
+// O-08: relayer mengirim tx untuk banyak worker berbarengan (claim/submit paralel dari
+// beberapa HP). Tanpa nonceManager, dua request bersamaan bisa dapat nonce yang sama
+// dan salah satu revert "nonce too low" — nonceManager menyerialkan alokasi nonce.
+const relayer = privateKeyToAccount(config.relayerPrivateKey, { nonceManager });
 export const publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) });
 const walletClient = createWalletClient({ account: relayer, chain, transport: http(config.rpcUrl) });
 
@@ -103,35 +106,9 @@ export async function tokenBalance(owner: Address): Promise<bigint> {
   })) as bigint;
 }
 
-export interface BountyReleasedEvent {
-  taskId: bigint;
-  worker: Address;
-  amount: bigint;
-  transactionHash: Hex;
-  blockNumber: bigint;
-}
-
-/** Riwayat gaji: semua BountyReleased untuk satu alamat worker. */
-export async function getPayoutsFor(worker: Address): Promise<BountyReleasedEvent[]> {
-  const logs = await publicClient.getContractEvents({
-    address: config.escrowAddress,
-    abi: escrowAbi,
-    eventName: "BountyReleased",
-    args: { worker },
-    fromBlock: 0n,
-    toBlock: "latest",
-  });
-  return logs.map((l) => {
-    const args = l.args as { taskId: bigint; worker: Address; amount: bigint };
-    return {
-      taskId: args.taskId,
-      worker: args.worker,
-      amount: args.amount,
-      transactionHash: l.transactionHash!,
-      blockNumber: l.blockNumber!,
-    };
-  });
-}
+// O-07: riwayat gaji per worker dulu di-query lewat eth_getLogs(fromBlock:0) di sini —
+// dipindah ke audit-log.jsonl (lib/missions.ts readAuditLogFor) karena public RPC BSC
+// testnet membatasi range eth_getLogs, dan fromBlock:0 gagal begitu range-nya besar.
 
 const REVERT_MESSAGES: Record<string, string> = {
   InvalidState: "Status task sudah berubah — coba refresh halaman",
