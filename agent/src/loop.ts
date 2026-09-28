@@ -148,16 +148,35 @@ export async function runMission(goal: string): Promise<void> {
         }
 
         t.verdict = verdict;
+
+        // O-09: verdict dikomit on-chain sebagai keccak256 dari field-field ini (urutan
+        // key TETAP — JSON.stringify di sini adalah definisi kanonik dari verdictHash).
+        // Audit log menyimpan field yang sama (lewat ...verdict + verifier di bawah),
+        // jadi siapa pun bisa reproduksi hash ini dan mencocokkannya ke event
+        // BountyReleased/TaskReopened di explorer.
+        const verdictHash = keccak256(
+          toHex(
+            JSON.stringify({
+              taskId: verdict.taskId,
+              decision: verdict.decision,
+              reasons: verdict.reasons,
+              confidence: verdict.confidence,
+              evidenceHash: verdict.evidenceHash,
+              verifier: model.name,
+            }),
+          ),
+        );
+
         let txHash: string;
         if (verdict.decision === "APPROVE") {
-          const receipt = await releaseBounty(t.taskId);
+          const receipt = await releaseBounty(t.taskId, verdictHash);
           txHash = receipt.transactionHash;
           t.payoutTxHash = txHash;
           t.paid = true;
           console.log(`   ✅ APPROVE (confidence ${verdict.confidence.toFixed(2)}) — ${verdict.reasons.join("; ")}`);
           console.log(`   💸 ${rupiah(t.spec.bountyIDRX)} dibayarkan ke ${onchain.worker} (tx ${txHash.slice(0, 14)}...)`);
         } else {
-          const receipt = await rejectAndReopen(t.taskId);
+          const receipt = await rejectAndReopen(t.taskId, verdictHash);
           txHash = receipt.transactionHash;
           console.log(`   ❌ REJECT — ${verdict.reasons.join("; ")}`);
           console.log(`   🔄 Task #${t.taskId} dibuka lagi untuk worker lain`);
@@ -167,6 +186,7 @@ export async function runMission(goal: string): Promise<void> {
           worker: onchain.worker,
           txHash,
           verifier: model.name,
+          verdictHash,
           ...verdict,
         });
         saveMissionState(goal, tracked);

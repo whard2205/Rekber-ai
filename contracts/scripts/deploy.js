@@ -3,17 +3,22 @@ const path = require("path");
 const { ethers, network } = require("hardhat");
 
 // Deploy MockIDRX + TaskEscrow.
-// Env (opsional): RELAYER_ADDRESS, VERIFY_WINDOW (detik), AGENT_ADDRESS (penerima mint awal)
+// Env (opsional): RELAYER_ADDRESS, VERIFY_WINDOW (detik), CLAIM_WINDOW (detik),
+// AGENT_ADDRESS (penerima mint awal)
 async function main() {
   const [deployer] = await ethers.getSigners();
   const relayer = process.env.RELAYER_ADDRESS || deployer.address;
   const verifyWindow = Number(process.env.VERIFY_WINDOW || 24 * 60 * 60);
+  // O-10: task Claimed tanpa proof selama ini bisa diambil alih worker lain.
+  const claimWindow = Number(process.env.CLAIM_WINDOW || 10 * 60);
   const agent = process.env.AGENT_ADDRESS || deployer.address;
 
   const idrx = await (await ethers.getContractFactory("MockIDRX")).deploy();
   await idrx.waitForDeployment();
 
-  const escrow = await (await ethers.getContractFactory("TaskEscrow")).deploy(relayer, verifyWindow);
+  const escrow = await (
+    await ethers.getContractFactory("TaskEscrow")
+  ).deploy(relayer, verifyWindow, claimWindow);
   await escrow.waitForDeployment();
 
   // Modal awal agent: Rp 10.000.000,00 (IDRX 2 desimal)
@@ -26,6 +31,7 @@ async function main() {
     idrx: await idrx.getAddress(),
     relayer,
     verifyWindow,
+    claimWindow,
     deployedAt: new Date().toISOString(),
   };
 

@@ -114,10 +114,12 @@ export async function getTask(taskId: bigint): Promise<OnchainTask> {
   })) as OnchainTask;
 }
 
-export async function releaseBounty(taskId: bigint) {
-  return write(config.escrowAddress, escrowAbi, "releaseBounty", [taskId]);
+/** O-09: verdictHash = keccak256 dari verdict verifikasi, dikomit on-chain lewat event
+ * BountyReleased sehingga bisa dicocokkan publik terhadap missions/audit-log.jsonl. */
+export async function releaseBounty(taskId: bigint, verdictHash: Hex) {
+  return write(config.escrowAddress, escrowAbi, "releaseBounty", [taskId, verdictHash]);
 }
 
-export async function rejectAndReopen(taskId: bigint) {
-  return write(config.escrowAddress, escrowAbi, "rejectAndReopen", [taskId]);
+export async function rejectAndReopen(taskId: bigint, verdictHash: Hex) {
+  return write(config.escrowAddress, escrowAbi, "rejectAndReopen", [taskId, verdictHash]);
 }

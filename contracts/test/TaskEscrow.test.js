@@ -3,9 +3,11 @@ const { ethers } = require("hardhat");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-network-helpers");
 
 const VERIFY_WINDOW = 24 * 60 * 60; // 24h: setelah ini worker bisa forceRelease
+const CLAIM_WINDOW = 10 * 60; // 10 menit: setelah ini klaim basi bisa diambil alih
 const BOUNTY = 500000n; // Rp 5.000,00 (IDRX 2 desimal)
 const SPEC_HASH = ethers.keccak256(ethers.toUtf8Bytes("spec-v1"));
 const PROOF_HASH = ethers.keccak256(ethers.toUtf8Bytes("proof-photo-1"));
+const VERDICT_HASH = ethers.keccak256(ethers.toUtf8Bytes("verdict-v1"));
 
 describe("TaskEscrow", function () {
   async function deployFixture() {
@@ -15,7 +17,7 @@ describe("TaskEscrow", function () {
     const idrx = await MockIDRX.deploy();
 
     const TaskEscrow = await ethers.getContractFactory("TaskEscrow");
-    const escrow = await TaskEscrow.deploy(relayer.address, VERIFY_WINDOW);
+    const escrow = await TaskEscrow.deploy(relayer.address, VERIFY_WINDOW, CLAIM_WINDOW);
 
     await idrx.mint(agent.address, BOUNTY * 100n);
     await idrx.connect(agent).approve(await escrow.getAddress(), BOUNTY * 100n);
@@ -120,6 +122,26 @@ describe("TaskEscrow", function () {
       );
     });
 
+    it("O-10: klaim segar tidak bisa diambil alih sebelum claimWindow lewat", async function () {
+      const { escrow, worker, other, taskId } = await loadFixture(postedFixture);
+      await escrow.connect(worker).claimTask(taskId);
+      await time.increase(CLAIM_WINDOW - 5);
+      await expect(escrow.connect(other).claimTask(taskId)).to.be.revertedWithCustomError(
+        escrow,
+        "InvalidState"
+      );
+    });
+
+    it("O-10: klaim basi (tak kunjung ada proof) bisa diambil alih worker lain", async function () {
+      const { escrow, worker, other, taskId } = await loadFixture(postedFixture);
+      await escrow.connect(worker).claimTask(taskId);
+      await time.increase(CLAIM_WINDOW + 1);
+      await expect(escrow.connect(other).claimTask(taskId))
+        .to.emit(escrow, "TaskClaimed")
+        .withArgs(taskId, other.address);
+      expect((await escrow.getTask(taskId)).worker).to.equal(other.address);
+    });
+
     it("claimFor: relayer bisa claim atas nama worker (worker tanpa gas)", async function () {
       const { escrow, worker, relayer, taskId } = await loadFixture(postedFixture);
       await escrow.connect(relayer).claimFor(taskId, worker.address);
@@ -162,6 +184,15 @@ describe("TaskEscrow", function () {
       ).to.be.revertedWithCustomError(escrow, "InvalidState");
     });
 
+    it("O-11: revert submit setelah deadline task", async function () {
+      const { escrow, worker, taskId, deadline } = await loadFixture(postedFixture);
+      await escrow.connect(worker).claimTask(taskId);
+      await time.increaseTo(deadline + 1);
+      await expect(
+        escrow.connect(worker).submitProof(taskId, PROOF_HASH)
+      ).to.be.revertedWithCustomError(escrow, "DeadlinePassed");
+    });
+
     it("submitProofFor: relayer atas nama worker; non-relayer ditolak", async function () {
       const { escrow, worker, other, relayer, taskId } = await loadFixture(postedFixture);
       await escrow.connect(relayer).claimFor(taskId, worker.address);
@@ -184,46 +215,43 @@ describe("TaskEscrow", function () {
   describe("releaseBounty", function () {
     it("agent membayar worker: Submitted -> Paid", async function () {
       const { escrow, idrx, agent, worker, taskId } = await loadFixture(submittedFixture);
-      await expect(escrow.connect(agent).releaseBounty(taskId))
+      await expect(escrow.connect(agent).releaseBounty(taskId, VERDICT_HASH))
         .to.emit(escrow, "BountyReleased")
-        .withArgs(taskId, worker.address, BOUNTY);
+        .withArgs(taskId, worker.address, BOUNTY, VERDICT_HASH);
       expect(await idrx.balanceOf(worker.address)).to.equal(BOUNTY);
       expect((await escrow.getTask(taskId)).status).to.equal(Status.Paid);
     });
 
     it("revert kalau bukan agent pemilik task", async function () {
       const { escrow, other, taskId } = await loadFixture(submittedFixture);
-      await expect(escrow.connect(other).releaseBounty(taskId)).to.be.revertedWithCustomError(
-        escrow,
-        "NotAgent"
-      );
+      await expect(
+        escrow.connect(other).releaseBounty(taskId, VERDICT_HASH)
+      ).to.be.revertedWithCustomError(escrow, "NotAgent");
     });
 
     it("revert release sebelum ada proof (status Claimed)", async function () {
       const { escrow, agent, worker, taskId } = await loadFixture(postedFixture);
       await escrow.connect(worker).claimTask(taskId);
-      await expect(escrow.connect(agent).releaseBounty(taskId)).to.be.revertedWithCustomError(
-        escrow,
-        "InvalidState"
-      );
+      await expect(
+        escrow.connect(agent).releaseBounty(taskId, VERDICT_HASH)
+      ).to.be.revertedWithCustomError(escrow, "InvalidState");
     });
 
     it("revert double release", async function () {
       const { escrow, agent, taskId } = await loadFixture(submittedFixture);
-      await escrow.connect(agent).releaseBounty(taskId);
-      await expect(escrow.connect(agent).releaseBounty(taskId)).to.be.revertedWithCustomError(
-        escrow,
-        "InvalidState"
-      );
+      await escrow.connect(agent).releaseBounty(taskId, VERDICT_HASH);
+      await expect(
+        escrow.connect(agent).releaseBounty(taskId, VERDICT_HASH)
+      ).to.be.revertedWithCustomError(escrow, "InvalidState");
     });
   });
 
   describe("rejectAndReopen", function () {
     it("agent menolak bukti: task kembali Open, worker lain bisa claim", async function () {
       const { escrow, agent, other, taskId } = await loadFixture(submittedFixture);
-      await expect(escrow.connect(agent).rejectAndReopen(taskId))
+      await expect(escrow.connect(agent).rejectAndReopen(taskId, VERDICT_HASH))
         .to.emit(escrow, "TaskReopened")
-        .withArgs(taskId);
+        .withArgs(taskId, VERDICT_HASH);
       const task = await escrow.getTask(taskId);
       expect(task.status).to.equal(Status.Open);
       expect(task.worker).to.equal(ethers.ZeroAddress);
@@ -236,10 +264,9 @@ describe("TaskEscrow", function () {
 
     it("revert kalau bukan agent", async function () {
       const { escrow, other, taskId } = await loadFixture(submittedFixture);
-      await expect(escrow.connect(other).rejectAndReopen(taskId)).to.be.revertedWithCustomError(
-        escrow,
-        "NotAgent"
-      );
+      await expect(
+        escrow.connect(other).rejectAndReopen(taskId, VERDICT_HASH)
+      ).to.be.revertedWithCustomError(escrow, "NotAgent");
     });
   });
 
@@ -286,7 +313,7 @@ describe("TaskEscrow", function () {
       await time.increaseTo(submittedAt + BigInt(VERIFY_WINDOW) + 1n);
       await expect(escrow.forceRelease(taskId))
         .to.emit(escrow, "BountyReleased")
-        .withArgs(taskId, worker.address, BOUNTY);
+        .withArgs(taskId, worker.address, BOUNTY, ethers.ZeroHash);
       expect(await idrx.balanceOf(worker.address)).to.equal(BOUNTY);
       expect((await escrow.getTask(taskId)).status).to.equal(Status.Paid);
     });

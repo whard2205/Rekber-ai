@@ -10,7 +10,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///         agent via refundExpired selama belum ada proof. Setelah proof tersubmit,
 ///         agent hanya punya dua pilihan: bayar, atau reopen — tidak pernah bisa menarik dana.
 ///         Kalau agent diam melewati verifyWindow, siapa pun bisa memicu forceRelease
-///         dan worker tetap dibayar.
+///         dan worker tetap dibayar. Setiap release/reopen membawa verdictHash — komitmen
+///         hash dari keputusan verifikasi AI (lihat agent/src/loop.ts), sehingga alasan
+///         APPROVE/REJECT bisa dicocokkan publik terhadap audit-log.jsonl.
 contract TaskEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -31,6 +33,7 @@ contract TaskEscrow is ReentrancyGuard {
         address worker;
         bytes32 proofHash;
         uint40 deadline;
+        uint40 claimedAt;
         uint40 submittedAt;
         Status status;
     }
@@ -55,21 +58,26 @@ contract TaskEscrow is ReentrancyGuard {
     );
     event TaskClaimed(uint256 indexed taskId, address indexed worker);
     event ProofSubmitted(uint256 indexed taskId, address indexed worker, bytes32 proofHash);
-    event BountyReleased(uint256 indexed taskId, address indexed worker, uint256 amount);
-    event TaskReopened(uint256 indexed taskId);
+    event BountyReleased(uint256 indexed taskId, address indexed worker, uint256 amount, bytes32 verdictHash);
+    event TaskReopened(uint256 indexed taskId, bytes32 verdictHash);
     event TaskRefunded(uint256 indexed taskId);
 
     /// @notice Backend yang boleh claim/submit atas nama worker (worker tanpa gas).
     address public immutable relayer;
     /// @notice Jeda maksimal agent memverifikasi proof sebelum worker boleh forceRelease.
     uint40 public immutable verifyWindow;
+    /// @notice Task berstatus Claimed tapi tak kunjung ada proof selama ini bisa
+    ///         diambil alih worker lain — mencegah satu klaim iseng membekukan task
+    ///         sampai deadline penuh.
+    uint40 public immutable claimWindow;
 
     uint256 public nextTaskId;
     mapping(uint256 => Task) private _tasks;
 
-    constructor(address relayer_, uint40 verifyWindow_) {
+    constructor(address relayer_, uint40 verifyWindow_, uint40 claimWindow_) {
         relayer = relayer_;
         verifyWindow = verifyWindow_;
+        claimWindow = claimWindow_;
     }
 
     modifier onlyRelayer() {
@@ -99,6 +107,7 @@ contract TaskEscrow is ReentrancyGuard {
             worker: address(0),
             proofHash: bytes32(0),
             deadline: deadline,
+            claimedAt: 0,
             submittedAt: 0,
             status: Status.Open
         });
@@ -124,15 +133,19 @@ contract TaskEscrow is ReentrancyGuard {
     }
 
     /// @notice Hanya agent pemilik task; satu-satunya jalur pembayaran normal.
-    function releaseBounty(uint256 taskId) external nonReentrant {
+    /// @param verdictHash keccak256 dari verdict verifikasi (JSON: decision, reasons,
+    ///        confidence, evidenceHash, verifier) — dicocokkan publik terhadap
+    ///        agent/missions/audit-log.jsonl.
+    function releaseBounty(uint256 taskId, bytes32 verdictHash) external nonReentrant {
         Task storage t = _tasks[taskId];
         if (t.status != Status.Submitted) revert InvalidState();
         if (msg.sender != t.agent) revert NotAgent();
-        _pay(taskId, t);
+        _pay(taskId, t, verdictHash);
     }
 
     /// @notice Agent menolak proof: task kembali Open untuk worker lain. Dana tetap terkunci.
-    function rejectAndReopen(uint256 taskId) external {
+    /// @param verdictHash lihat releaseBounty — verdict REJECT juga dikomit on-chain.
+    function rejectAndReopen(uint256 taskId, bytes32 verdictHash) external {
         Task storage t = _tasks[taskId];
         if (t.status != Status.Submitted) revert InvalidState();
         if (msg.sender != t.agent) revert NotAgent();
@@ -141,7 +154,7 @@ contract TaskEscrow is ReentrancyGuard {
         t.proofHash = bytes32(0);
         t.submittedAt = 0;
         t.status = Status.Open;
-        emit TaskReopened(taskId);
+        emit TaskReopened(taskId, verdictHash);
     }
 
     /// @notice Setelah deadline tanpa proof, siapa pun boleh mengembalikan dana ke agent.
@@ -156,19 +169,26 @@ contract TaskEscrow is ReentrancyGuard {
     }
 
     /// @notice Perlindungan worker: agent diam melewati verifyWindow = worker tetap dibayar.
+    ///         verdictHash kosong (bytes32(0)) — bukan keputusan agent, melainkan
+    ///         jaminan kontrak yang jalan otomatis.
     function forceRelease(uint256 taskId) external nonReentrant {
         Task storage t = _tasks[taskId];
         if (t.status != Status.Submitted) revert InvalidState();
         if (block.timestamp <= uint256(t.submittedAt) + verifyWindow) revert VerifyWindowActive();
-        _pay(taskId, t);
+        _pay(taskId, t, bytes32(0));
     }
 
     function _claim(uint256 taskId, address worker) internal {
         Task storage t = _tasks[taskId];
-        if (t.status != Status.Open) revert InvalidState();
+        // O-10: klaim basi (Claimed tapi tak kunjung ada proof selama claimWindow)
+        // bisa diambil alih — satu klaim iseng tidak boleh membekukan task sampai
+        // deadline penuh.
+        bool staleClaim = t.status == Status.Claimed && block.timestamp > uint256(t.claimedAt) + claimWindow;
+        if (t.status != Status.Open && !staleClaim) revert InvalidState();
         if (block.timestamp > t.deadline) revert DeadlinePassed();
 
         t.worker = worker;
+        t.claimedAt = uint40(block.timestamp);
         t.status = Status.Claimed;
         emit TaskClaimed(taskId, worker);
     }
@@ -177,6 +197,9 @@ contract TaskEscrow is ReentrancyGuard {
         Task storage t = _tasks[taskId];
         if (t.status != Status.Claimed) revert InvalidState();
         if (t.worker != worker) revert NotWorker();
+        // O-11: submit setelah deadline task ditolak on-chain (dulu cuma dicek off-chain
+        // di verifier lapis 4 — kontrak sendiri tidak menegakkannya).
+        if (block.timestamp > t.deadline) revert DeadlinePassed();
 
         t.proofHash = proofHash;
         t.submittedAt = uint40(block.timestamp);
@@ -184,9 +207,9 @@ contract TaskEscrow is ReentrancyGuard {
         emit ProofSubmitted(taskId, worker, proofHash);
     }
 
-    function _pay(uint256 taskId, Task storage t) internal {
+    function _pay(uint256 taskId, Task storage t, bytes32 verdictHash) internal {
         t.status = Status.Paid;
         IERC20(t.token).safeTransfer(t.worker, t.bounty);
-        emit BountyReleased(taskId, t.worker, t.bounty);
+        emit BountyReleased(taskId, t.worker, t.bounty, verdictHash);
     }
 }

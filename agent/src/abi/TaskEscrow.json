@@ -10,6 +10,11 @@
         "internalType": "uint40",
         "name": "verifyWindow_",
         "type": "uint40"
+      },
+      {
+        "internalType": "uint40",
+        "name": "claimWindow_",
+        "type": "uint40"
       }
     ],
     "stateMutability": "nonpayable",
@@ -96,6 +101,12 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "verdictHash",
+        "type": "bytes32"
       }
     ],
     "name": "BountyReleased",
@@ -209,6 +220,12 @@
         "internalType": "uint256",
         "name": "taskId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "verdictHash",
+        "type": "bytes32"
       }
     ],
     "name": "TaskReopened",
@@ -243,6 +260,19 @@
     "name": "claimTask",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "claimWindow",
+    "outputs": [
+      {
+        "internalType": "uint40",
+        "name": "",
+        "type": "uint40"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -303,6 +333,11 @@
           {
             "internalType": "uint40",
             "name": "deadline",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint40",
+            "name": "claimedAt",
             "type": "uint40"
           },
           {
@@ -390,6 +425,11 @@
         "internalType": "uint256",
         "name": "taskId",
         "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "verdictHash",
+        "type": "bytes32"
       }
     ],
     "name": "rejectAndReopen",
@@ -416,6 +456,11 @@
         "internalType": "uint256",
         "name": "taskId",
         "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "verdictHash",
+        "type": "bytes32"
       }
     ],
     "name": "releaseBounty",
