@@ -10,6 +10,9 @@ module.exports = {
       // OpenZeppelin 5.6 (ERC20Permit -> Bytes.sol) pakai MCOPY (EIP-5656, Cancun).
       // BSC mendukungnya sejak hardfork Tycho (Jun 2024) di mainnet & testnet.
       evmVersion: "cancun",
+      // fundWithSig (RekberEscrow) py 7 parameter + beberapa local var -> "Stack too deep"
+      // tanpa ini (sudah diantisipasi di docs/rekber-ai/PLAN.md §3.2).
+      viaIR: true,
     },
   },
   networks: {

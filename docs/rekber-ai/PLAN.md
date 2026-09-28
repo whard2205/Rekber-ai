@@ -112,7 +112,10 @@ Released(bytes32 indexed dealId, uint256 sellerAmount, uint256 fee, SettleReason
 Refunded(bytes32 indexed dealId, uint256 amount, SettleReason reason, bytes32 verdictHash)
 SplitSettled(bytes32 indexed dealId, uint256 buyerAmount, uint256 sellerAmount)
 ```
-**Errors:** `DealExists, ZeroAmount, ZeroAddress, SelfDeal, InvalidState, NotBuyer, NotSeller, NotArbiter, BadSignature, SignatureExpired, WindowClosed, WindowStillOpen, FeeTooHigh`.
+**Errors:** `DealExists, ZeroAmount, ZeroAddress, ZeroHash, SelfDeal, InvalidState, NotBuyer, NotSeller, NotArbiter, BadSignature, SignatureExpired, WindowClosed, WindowStillOpen, FeeTooHigh`.
+(`ZeroHash` ditambah saat implementasi R-02 — spec awal tidak menyediakan error untuk syarat "hash≠0" di `ship`/`dispute`/`resolve`/`escalate`; daripada dipaksakan ke `ZeroAmount` yang semantiknya beda, dibuat error khusus.)
+
+**Urutan cek di `_ship`/`_confirm`/`_dispute`: status dulu, baru otorisasi (caller == seller/buyer).** Ini supaya deal yang tidak ada (status `None`, semua field nol termasuk `seller`/`buyer`) selalu revert `InvalidState`, bukan `NotSeller`/`NotBuyer` yang menyesatkan (seolah-olah dealnya ada tapi caller-nya salah). Sama seperti pola `TaskEscrow.sol` MANDOR dan `resolve()` di kontrak ini (role check yang tidak bergantung pada data deal boleh duluan; cek yang bergantung pada data deal harus menunggu status tervalidasi).
 
 **Invarian (wajib ada test-nya):**
 - Dana hanya keluar ke **pembeli**, **penjual**, atau **feeRecipient** (fee hanya pada `Released`). **Tidak ada** fungsi yang memungkinkan arbiter/operator/deployer mengambil dana.
@@ -269,7 +272,7 @@ Loop tiap `POLL_MS` (3000):
 - [x] **R-01 · MockIDRX + permit**
   *Cek:* test: mint, decimals=0 (§3.1), permit dengan tanda tangan viem/ethers → allowance terset.
 
-- [ ] **R-02 · RekberEscrow + test lengkap (TDD)**
+- [x] **R-02 · RekberEscrow + test lengkap (TDD)**
   Tulis test dulu, lalu kontrak. Minimal mencakup: setiap fungsi di tabel §3.2 (jalur sukses + setiap revert), jalur tanda tangan (sig pihak lain ditolak `BadSignature`, sig kedaluwarsa `SignatureExpired`, replay setelah status berubah `InvalidState`, relayer mengganti seller/amount/data → `BadSignature`), **Offer**: fund dengan seller/amount/specHash yang berbeda dari Offer → `BadSignature`, Offer kedaluwarsa → `SignatureExpired`, Offer ditandatangani bukan-seller → `BadSignature`; permit yang sudah di-front-run tetap berhasil fund; `v == 0` (tanpa permit, pembeli sudah `approve`) berhasil fund; token 0 desimal (amount `8_500_000`), matematika fee (1% ke feeRecipient, 99% ke penjual), refund tanpa fee, split ganjil (amount 1 → pembeli 0, penjual 1), semua timeout, `resolve` oleh humanArbiter pada `Escalated`, aiArbiter **tidak bisa** resolve `Escalated`, constructor menolak `feeBps > 500` dan alamat nol. Hapus `TaskEscrow.sol` + test-nya.
   *Cek:* `npx hardhat test` hijau, ≥ 35 test, 0 test MANDOR tersisa.
 
