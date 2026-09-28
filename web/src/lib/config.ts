@@ -9,11 +9,11 @@ function required(name: string): string {
 }
 
 // Fallback alamat kontrak dari hasil deploy lokal, biar DX enak saat development.
-function localDeployment(): { escrow: string; idrx: string } | null {
+function localDeployment(): { escrow: string; token: string } | null {
   const p = path.join(process.cwd(), "..", "contracts", "deployments", "localhost.json");
   if (!fs.existsSync(p)) return null;
   const d = JSON.parse(fs.readFileSync(p, "utf8"));
-  return { escrow: d.escrow, idrx: d.idrx };
+  return { escrow: d.escrow, token: d.token };
 }
 
 const chainId = Number(process.env.CHAIN_ID || 31337);
@@ -24,13 +24,24 @@ export const config = {
   chainId,
   relayerPrivateKey: required("RELAYER_PRIVATE_KEY") as `0x${string}`,
   escrowAddress: (process.env.ESCROW_ADDRESS || local?.escrow || "") as `0x${string}`,
-  tokenAddress: (process.env.TOKEN_ADDRESS || local?.idrx || "") as `0x${string}`,
-  missionsFile: path.resolve(process.cwd(), process.env.MISSIONS_FILE || "../agent/missions/current.json"),
-  uploadsDir: path.resolve(process.cwd(), process.env.UPLOADS_DIR || "./uploads"),
+  tokenAddress: (process.env.TOKEN_ADDRESS || local?.token || "") as `0x${string}`,
+  // Dibagi dengan agent/ — web menulis deals/evidence, agent menulis verdicts/audit-log.
+  dataDir: path.resolve(process.cwd(), process.env.DATA_DIR || "../data"),
+  // Provider AI untuk ekstraksi checklist saat penjual membuat transaksi (§3.4a).
+  aiProvider: (process.env.AI_PROVIDER || "mock") as "openai" | "aimlapi" | "mock",
+  aiBaseUrl: process.env.AI_BASE_URL || "",
+  aiApiKey: process.env.AI_API_KEY || "",
+  aiModel: process.env.AI_MODEL || "gpt-4o",
+  maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 6),
+  faucetEnabled: process.env.FAUCET_ENABLED !== "0",
+  // Nilai tampilan saja (bukan on-chain) — dipakai untuk countdown "menunggu tanggapan
+  // penjual" di UI. Sinkronkan dengan SELLER_RESPONSE_SECONDS di agent/.env.
+  sellerResponseSeconds: Number(process.env.SELLER_RESPONSE_SECONDS || 60),
 };
 
 if (!config.escrowAddress || !config.tokenAddress) {
   throw new Error("ESCROW_ADDRESS/TOKEN_ADDRESS belum diset dan deployments/localhost.json tidak ditemukan");
 }
 
-fs.mkdirSync(config.uploadsDir, { recursive: true });
+fs.mkdirSync(path.join(config.dataDir, "deals"), { recursive: true });
+fs.mkdirSync(path.join(config.dataDir, "evidence"), { recursive: true });

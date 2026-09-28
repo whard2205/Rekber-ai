@@ -1,7 +1,7 @@
-/** Format satuan terkecil IDRX (2 desimal) jadi string Rupiah, mis. 500000n -> "Rp 5.000". */
+/** Format satuan terkecil IDRX (token 0 desimal, 1 unit = Rp1) jadi string Rupiah,
+ * mis. 8500000n -> "Rp 8.500.000". */
 export function rupiah(v: string | bigint): string {
-  const n = Number(BigInt(v)) / 100;
-  return `Rp ${n.toLocaleString("id-ID")}`;
+  return `Rp ${BigInt(v).toLocaleString("id-ID")}`;
 }
 
 export function shortAddress(addr: string): string {
@@ -13,4 +13,10 @@ export function explorerTxUrl(txHash: string): string | null {
   const base = process.env.NEXT_PUBLIC_EXPLORER_URL;
   if (!base) return null;
   return `${base.replace(/\/$/, "")}/tx/${txHash}`;
+}
+
+export function explorerAddressUrl(address: string): string | null {
+  const base = process.env.NEXT_PUBLIC_EXPLORER_URL;
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}/address/${address}`;
 }

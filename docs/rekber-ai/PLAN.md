@@ -139,7 +139,7 @@ data/photo-registry.json        ← hanya ditulis agent (hash foto → dealCode,
 ```json
 {
   "dealCode": "RKB-7F3K9Q",
-  "dealId": "0x…(bytes32 acak)",
+  "dealId": "0x…(keccak256(dealCode) — deterministik, bukan acak; lihat web/src/lib/deals.ts)",
   "createdAt": "ISO",
   "seller": "0x…",
   "spec": {
@@ -292,7 +292,7 @@ Loop tiap `POLL_MS` (3000):
   §3.5 lengkap. `index.ts` menjalankan daemon (tidak ada lagi argumen goal CLI).
   *Cek:* dengan node lokal + deal yang dibuat manual lewat skrip kecil di test, daemon memproses `Shipped` → shipmentCheck, `Disputed` (mock `BATU`) → `Refunded` on-chain dengan verdictHash yang cocok dengan file.
 
-- [ ] **R-07 · Web: fondasi**
+- [x] **R-07 · Web: fondasi**
   Port file §2, `config.ts`, `chain.ts` (fungsi relay: `fundWithSig`, `act`, `mint`, `getDeal`, `nonces`, `balanceOf`), `eip712.ts`, `deals.ts` (baca/tulis deal file, `generateDealCode`, hash kanonik §3.3), `image.ts`, `ai.ts` (checklist), `/api/faucet`, `/api/permit-nonce`, `/api/deals/[code]` GET. Hapus halaman & route MANDOR.
   *Cek:* `npm run typecheck` + `npm run build` hijau.
 

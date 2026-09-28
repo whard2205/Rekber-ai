@@ -3,8 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MANDOR — Kerja untuk AI",
-  description: "Selesaikan tugas dari AI agent, dibayar IDRX instan.",
+  title: "Rekber AI — Escrow non-custodial dengan AI sebagai hakim",
+  description: "Bayar aman jual-beli online: dana dikunci di kontrak, AI memutus sengketa.",
 };
 
 export const viewport: Viewport = {
@@ -19,12 +19,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="header">
           <Link href="/" className="brand">
-            <span className="brand-mark">⛑️</span>
-            MANDOR
+            <span className="brand-mark">⚖️</span>
+            Rekber AI
           </Link>
           <nav className="nav">
-            <Link href="/">Kerjaan</Link>
-            <Link href="/riwayat">Riwayat</Link>
+            <Link href="/jual">Jualan</Link>
+            <Link href="/panggung">Panggung</Link>
           </nav>
         </header>
         <main>{children}</main>
