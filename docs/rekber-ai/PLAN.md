@@ -284,7 +284,7 @@ Loop tiap `POLL_MS` (3000):
   Minta user: 3 wallet (deployer, aiArbiter, relayer) + alamat humanArbiter (wallet pribadi user), tBNB di deployer/aiArbiter/relayer, `ETHERSCAN_API_KEY` (Etherscan V2 berlaku untuk chainId 97). User mengisi `.env` sendiri. Lalu deploy, `npx hardhat verify --network bscTestnet <escrow> <constructor args…>` dan verify token. Commit `deployments/bscTestnet.json`.
   *Cek:* kedua kontrak **Verified** di testnet.bscscan.com. Alamat escrow ini **sudah cukup untuk submit awal** (form mewajibkan kontrak yang resolve di BscScan).
 
-- [ ] **R-05 · Agent: fondasi + hakim**
+- [x] **R-05 · Agent: fondasi + hakim**
   `config.ts`, `chain.ts` (ABI baru, `resolve`/`escalate`/`getDeal`, nonceManager), `store.ts` (baca deal & bukti, tulis verdict, registry foto), `ai.ts` (provider multi-gambar: OpenAI-compatible, Anthropic, mock), `judge.ts` (prompt §3.4c, parse + gate, `buildCommit`, `verdictHash`), `shipment.ts` (§3.4b). Test unit `node:test` (pola `agent/test/verifier.test.ts`): gate (UNSURE/low confidence/malformed/foto dobel → ESCALATE; REFUND/RELEASE lolos), `verdictHash` deterministik & sama dengan hitungan ulang dari `commit` yang disimpan, mock rules.
   *Cek:* `npm test` + `npm run typecheck` hijau.
 

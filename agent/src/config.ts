@@ -12,11 +12,11 @@ function required(name: string): string {
 }
 
 // Fallback alamat kontrak dari hasil deploy lokal, biar DX enak saat development.
-function localDeployment(): { escrow: string; idrx: string } | null {
+function localDeployment(): { escrow: string; token: string } | null {
   const p = path.join(here, "..", "..", "contracts", "deployments", "localhost.json");
   if (!fs.existsSync(p)) return null;
   const d = JSON.parse(fs.readFileSync(p, "utf8"));
-  return { escrow: d.escrow, idrx: d.idrx };
+  return { escrow: d.escrow, token: d.token };
 }
 
 const chainId = Number(process.env.CHAIN_ID || 31337);
@@ -25,56 +25,36 @@ const local = chainId === 31337 ? localDeployment() : null;
 export const config = {
   rpcUrl: process.env.RPC_URL || "http://127.0.0.1:8545",
   chainId,
-  agentPrivateKey: required("AGENT_PRIVATE_KEY") as `0x${string}`,
+  aiArbiterPrivateKey: required("AI_ARBITER_PRIVATE_KEY") as `0x${string}`,
   escrowAddress: (process.env.ESCROW_ADDRESS || local?.escrow || "") as `0x${string}`,
-  tokenAddress: (process.env.TOKEN_ADDRESS || local?.idrx || "") as `0x${string}`,
-  anthropicModel: process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
-  // Verifikasi boleh pakai model berbeda dari planning (mis. lebih murah).
-  verifierModel: process.env.VERIFIER_MODEL || process.env.ANTHROPIC_MODEL || "claude-opus-4-8",
-  mockBrain: process.env.MANDOR_MOCK_BRAIN === "1",
-  // Provider planning (goal -> daftar task): anthropic | aimlapi | mock.
-  // Default mengikuti MANDOR_MOCK_BRAIN; bisa dipisah dari verifierProvider (mis. planning
-  // aimlapi + verifikasi anthropic, atau sebaliknya).
-  plannerProvider: (process.env.PLANNER_PROVIDER ||
-    (process.env.MANDOR_MOCK_BRAIN === "1" ? "mock" : "anthropic")) as "anthropic" | "aimlapi" | "mock",
-  // Provider verifikasi: anthropic | openai | aimlapi | mock.
-  // Default mengikuti MANDOR_MOCK_BRAIN; bisa dipisah (mis. planning mock + verifikasi aimlapi/openai).
-  verifierProvider: (process.env.VERIFIER_PROVIDER ||
-    (process.env.MANDOR_MOCK_BRAIN === "1" ? "mock" : "anthropic")) as
-    | "anthropic"
-    | "openai"
-    | "aimlapi"
-    | "mock",
+  tokenAddress: (process.env.TOKEN_ADDRESS || local?.token || "") as `0x${string}`,
+  // Dibagi dengan web/ — web menulis deal & bukti, agent hanya baca + tulis verdict/audit log.
+  dataDir: path.resolve(here, "..", process.env.DATA_DIR || "../data"),
+  // Provider AI: anthropic | openai | aimlapi | mock (default mock — harus disetel eksplisit
+  // untuk demo nyata, supaya lupa isi API key tidak diam-diam jatuh ke mock).
+  aiProvider: (process.env.AI_PROVIDER || "mock") as "anthropic" | "openai" | "aimlapi" | "mock",
+  aiModel: process.env.AI_MODEL || "",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
-  // AI/ML API (https://aimlapi.com) — proxy OpenAI-compatible ke banyak vendor (GPT-4o, Claude, dll).
   aimlApiKey: process.env.AIMLAPI_API_KEY || "",
   aimlApiModel: process.env.AIMLAPI_MODEL || "gpt-4o",
-  // APPROVE butuh confidence model >= ambang ini (gating fail-safe).
-  confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.8),
-  // Batas percobaan verifikasi per task — anti spam resubmission membakar API.
-  maxVerificationsPerTask: Number(process.env.MAX_VERIFICATIONS_PER_TASK || 5),
-  taskDeadlineMinutes: Number(process.env.TASK_DEADLINE_MINUTES || 60),
-  proofDir: path.resolve(here, "..", process.env.PROOF_DIR || "../worker-app/uploads"),
+  // REFUND/RELEASE butuh confidence model >= ambang ini; di bawahnya -> ESCALATE (fail-safe).
+  confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.85),
+  // Tunggu tanggapan penjual maksimal sekian detik sebelum hakim memutus tanpa tanggapan.
+  sellerResponseSeconds: Number(process.env.SELLER_RESPONSE_SECONDS || 60),
+  pollMs: Number(process.env.POLL_MS || 3000),
 };
 
 if (!config.escrowAddress || !config.tokenAddress) {
   throw new Error("ESCROW_ADDRESS/TOKEN_ADDRESS belum diset dan deployments/localhost.json tidak ditemukan");
 }
-if (config.plannerProvider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
-  throw new Error(
-    "PLANNER_PROVIDER=anthropic butuh ANTHROPIC_API_KEY (atau set PLANNER_PROVIDER=aimlapi, atau MANDOR_MOCK_BRAIN=1 untuk uji loop offline)",
-  );
+if (config.aiProvider === "anthropic" && !config.anthropicApiKey) {
+  throw new Error("AI_PROVIDER=anthropic butuh ANTHROPIC_API_KEY");
 }
-if (config.plannerProvider === "aimlapi" && !config.aimlApiKey) {
-  throw new Error("PLANNER_PROVIDER=aimlapi butuh AIMLAPI_API_KEY");
+if (config.aiProvider === "openai" && !config.openaiApiKey) {
+  throw new Error("AI_PROVIDER=openai butuh OPENAI_API_KEY");
 }
-if (config.verifierProvider === "openai" && !config.openaiApiKey) {
-  throw new Error("VERIFIER_PROVIDER=openai butuh OPENAI_API_KEY");
-}
-if (config.verifierProvider === "aimlapi" && !config.aimlApiKey) {
-  throw new Error("VERIFIER_PROVIDER=aimlapi butuh AIMLAPI_API_KEY");
-}
-if (config.verifierProvider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
-  throw new Error("VERIFIER_PROVIDER=anthropic butuh ANTHROPIC_API_KEY");
+if (config.aiProvider === "aimlapi" && !config.aimlApiKey) {
+  throw new Error("AI_PROVIDER=aimlapi butuh AIMLAPI_API_KEY");
 }

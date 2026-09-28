@@ -1,18 +1,59 @@
-// Spec task manusia yang dihasilkan brain dan diposting ke escrow.
-export interface HumanTaskSpec {
+// Tipe bersama untuk deal Rekber AI — dibaca dari data/deals/<dealCode>.json (web menulis,
+// agent hanya baca+tambah verdict). Field & urutan key mengikuti docs/rekber-ai/PLAN.md §3.3
+// persis — jangan diubah tanpa mengubah dokumen itu juga (hash dihitung dari JSON.stringify
+// objek-objek ini, urutan key ikut menentukan hash).
+
+export interface Spec {
+  dealCode: string;
+  seller: string;
   title: string;
-  // Instruksi untuk worker, bahasa Indonesia, cukup jelas untuk orang awam
-  instructions: string;
-  acceptanceCriteria: string[];
-  // Upah dalam satuan terkecil IDRX (2 desimal): 500000 = Rp 5.000,00
-  bountyIDRX: number;
-  // Kode tantangan anti-cheat, dibuat agent (bukan model) saat posting.
-  // Ikut masuk specHash on-chain sehingga tamper-evident. Worker wajib
-  // menampilkan kode ini di dalam foto bukti.
-  challenge: string;
+  /** Rupiah utuh sebagai string (token 0 desimal): "8500000" = Rp8.500.000. */
+  priceIDRX: string;
+  description: string;
+  checklist: string[];
+  listingPhotos: string[];
 }
 
-export interface ProofImage {
+export interface ShipmentEvidence {
+  packingPhotos: string[];
+  resiPhoto: string | null;
+  resiText: string;
+  shipmentHash: string;
+  submittedAt: string;
+}
+
+export interface DisputeEvidence {
+  photos: string[];
+  complaint: string;
+  disputeHash: string;
+  submittedAt: string;
+}
+
+export interface SellerResponseEvidence {
+  photos: string[];
+  text: string;
+  responseHash: string;
+  respondedAt: string;
+}
+
+export interface DealRecord {
+  dealCode: string;
+  dealId: string;
+  createdAt: string;
+  seller: string;
+  spec: Spec;
+  specHash: string;
+  offer: { deadline: number; sig: string };
+  shipment?: ShipmentEvidence;
+  dispute?: DisputeEvidence;
+  sellerResponse?: SellerResponseEvidence;
+  txs: { fund?: string; ship?: string; confirm?: string; dispute?: string };
+}
+
+/** Satu foto bukti + label teks yang mendahuluinya saat dikirim ke model vision
+ * (mis. "Foto 3 — packing dari penjual") — supaya model tahu peran tiap foto. */
+export interface ImageInput {
+  label: string;
   base64: string;
   mediaType: "image/jpeg" | "image/png" | "image/webp";
 }

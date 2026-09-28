@@ -1,26 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  defineChain,
-  parseEventLogs,
-  type Abi,
-  type Address,
-  type Hex,
-} from "viem";
+import { createPublicClient, createWalletClient, http, defineChain, type Abi, type Address, type Hex } from "viem";
 import { nonceManager, privateKeyToAccount } from "viem/accounts";
 import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
 import { config } from "./config.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const loadAbi = (name: string): Abi =>
-  JSON.parse(fs.readFileSync(path.join(here, "abi", `${name}.json`), "utf8"));
+const loadAbi = (name: string): Abi => JSON.parse(fs.readFileSync(path.join(here, "abi", `${name}.json`), "utf8"));
 
-export const escrowAbi = loadAbi("TaskEscrow");
-export const idrxAbi = loadAbi("MockIDRX");
+export const escrowAbi = loadAbi("RekberEscrow");
 
 const KNOWN_CHAINS: Record<number, typeof hardhat> = {
   31337: hardhat,
@@ -43,32 +32,43 @@ export function resolveChain(chainId: number, rpcUrl: string) {
 }
 
 const chain = resolveChain(config.chainId, config.rpcUrl);
-// O-08: nonceManager sebagai jaring pengaman kalau loop pemrosesan task berubah jadi
-// paralel di masa depan (saat ini sekuensial, jadi tidak wajib, tapi murah dan aman).
-export const account = privateKeyToAccount(config.agentPrivateKey, { nonceManager });
+// nonceManager: jaring pengaman kalau loop memproses beberapa deal "bersamaan" di masa depan
+// (saat ini sekuensial per tick, jadi tidak wajib, tapi murah dan aman — pelajaran MANDOR O-08).
+export const account = privateKeyToAccount(config.aiArbiterPrivateKey, { nonceManager });
 export const publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) });
 export const walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) });
 
-// Status enum harus sinkron dengan TaskEscrow.sol
-export const Status = { None: 0, Open: 1, Claimed: 2, Submitted: 3, Paid: 4, Refunded: 5 } as const;
+// Status enum harus sinkron dengan RekberEscrow.sol
+export const Status = {
+  None: 0,
+  Funded: 1,
+  Shipped: 2,
+  Disputed: 3,
+  Escalated: 4,
+  Released: 5,
+  Refunded: 6,
+  Split: 7,
+} as const;
 
-export interface OnchainTask {
-  agent: Address;
-  token: Address;
-  bounty: bigint;
-  specHash: Hex;
-  worker: Address;
-  proofHash: Hex;
-  deadline: number;
-  submittedAt: number;
+export interface OnchainDeal {
+  buyer: Address;
+  seller: Address;
+  amount: bigint;
+  fundedAt: number;
+  shippedAt: number;
+  disputedAt: number;
   status: number;
+  specHash: Hex;
+  shipmentHash: Hex;
+  disputeHash: Hex;
+  verdictHash: Hex;
 }
 
-async function write(address: Address, abi: Abi, functionName: string, args: unknown[]) {
+async function write(functionName: string, args: unknown[]) {
   const { request } = await publicClient.simulateContract({
     account,
-    address,
-    abi,
+    address: config.escrowAddress,
+    abi: escrowAbi,
     functionName,
     args,
   });
@@ -76,50 +76,21 @@ async function write(address: Address, abi: Abi, functionName: string, args: unk
   return publicClient.waitForTransactionReceipt({ hash });
 }
 
-export async function approveToken(amount: bigint) {
-  return write(config.tokenAddress, idrxAbi, "approve", [config.escrowAddress, amount]);
-}
-
-export async function tokenBalance(owner: Address): Promise<bigint> {
-  return (await publicClient.readContract({
-    address: config.tokenAddress,
-    abi: idrxAbi,
-    functionName: "balanceOf",
-    args: [owner],
-  })) as bigint;
-}
-
-/** Post task ke escrow, return taskId dari event TaskPosted. */
-export async function postTask(bounty: bigint, specHash: Hex, deadline: number): Promise<bigint> {
-  const receipt = await write(config.escrowAddress, escrowAbi, "postTask", [
-    config.tokenAddress,
-    bounty,
-    specHash,
-    deadline,
-  ]);
-  // O-12: taskId diparsing langsung dari receipt.logs, bukan query eth_getLogs terpisah —
-  // public RPC di-load-balance bisa tertinggal satu node dan gagal menemukan event yang
-  // baru saja di-mine di node lain. parseEventLogs tidak butuh panggilan RPC tambahan.
-  const [mine] = parseEventLogs({ abi: escrowAbi, eventName: "TaskPosted", logs: receipt.logs });
-  if (!mine) throw new Error("TaskPosted event tidak ditemukan di receipt");
-  return (mine.args as { taskId: bigint }).taskId;
-}
-
-export async function getTask(taskId: bigint): Promise<OnchainTask> {
+export async function getDeal(dealId: Hex): Promise<OnchainDeal> {
   return (await publicClient.readContract({
     address: config.escrowAddress,
     abi: escrowAbi,
-    functionName: "getTask",
-    args: [taskId],
-  })) as OnchainTask;
+    functionName: "getDeal",
+    args: [dealId],
+  })) as OnchainDeal;
 }
 
-/** O-09: verdictHash = keccak256 dari verdict verifikasi, dikomit on-chain lewat event
- * BountyReleased sehingga bisa dicocokkan publik terhadap missions/audit-log.jsonl. */
-export async function releaseBounty(taskId: bigint, verdictHash: Hex) {
-  return write(config.escrowAddress, escrowAbi, "releaseBounty", [taskId, verdictHash]);
+/** AI arbiter memutus sengketa: refundBuyer=true -> REFUND, false -> RELEASE. */
+export async function resolve(dealId: Hex, refundBuyer: boolean, verdictHash: Hex) {
+  return write("resolve", [dealId, refundBuyer, verdictHash]);
 }
 
-export async function rejectAndReopen(taskId: bigint, verdictHash: Hex) {
-  return write(config.escrowAddress, escrowAbi, "rejectAndReopen", [taskId, verdictHash]);
+/** AI arbiter melempar kasus ke manusia (ragu / output rusak). */
+export async function escalate(dealId: Hex, verdictHash: Hex) {
+  return write("escalate", [dealId, verdictHash]);
 }
