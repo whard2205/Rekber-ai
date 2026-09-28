@@ -54,7 +54,7 @@ User kasih goal ke agent
         │
         ▼
 [3] Worker (siapa pun, login 30 detik) claim task → kerjakan → submit bukti
-    (foto/jawaban → IPFS, hash on-chain)
+    (foto → disk lokal server, keccak256 hash on-chain; IPFS = roadmap, lihat §4)
         │
         ▼
 [4] Agent memverifikasi bukti pakai vision (Claude) vs acceptance criteria
@@ -88,7 +88,7 @@ Satu-satunya manusia di sistem ini adalah **pekerjanya**. Perekrutan, kontrak, Q
 | Agent wallet | **viem** (upgrade path: Coinbase AgentKit/CDP) | Agent pegang wallet sendiri, tanda tangan tx sendiri. |
 | Worker app | **Next.js PWA mobile-first**, burner wallet lokal (v0) → Privy (v1) | Penonton non-crypto bisa jadi worker dalam 30 detik tanpa install apa pun. Krusial untuk live demo. |
 | Relayer | Backend worker-app membayar gas untuk claim/submit (`claimFor`/`submitProofFor`) | Worker baru punya 0 gas — friction harus nol. Roadmap: paymaster/AA. |
-| Bukti kerja | **IPFS (Pinata)**, hash on-chain | Murah, verifiable. |
+| Bukti kerja | **v0 terpasang: disk lokal server**, keccak256 hash on-chain. Roadmap: IPFS (Pinata) di belakang interface yang sama (`getProof`) | Disk lokal cukup untuk demo satu-mesin; hash on-chain sudah tamper-evident hari ini. |
 | Token upah | **IDRX** (utama) — settlement bounty on-chain dalam Rupiah | Lokal, relevan untuk juri Indonesia. Istilah yang dipakai: "bounty settlement", BUKAN "gaji/crypto salary". |
 
 ### Kontrak `TaskEscrow` — state machine minimal
@@ -103,10 +103,21 @@ OPEN ──claim──► CLAIMED ──submitProof──► SUBMITTED ──rel
 - Timeout: task kadaluarsa → dana balik ke agent otomatis.
 
 ### Anti-curang (jawaban juri #1: "kalau worker ngirim foto ngasal?")
-1. **Vision verification** — Claude membandingkan bukti vs acceptance criteria yang agent tulis sendiri saat posting.
-2. **EXIF/timestamp check** — foto harus baru, bukan dari Google.
-3. **Redundansi** — task penting dikirim ke 2–3 worker, agent cross-check jawaban.
-4. **Reputation** (nice-to-have) — worker jujur naik reputasi, diprioritaskan.
+
+**Terpasang di MVP hari ini** (lihat README "Layered anti-cheat verification" untuk detail
+lengkap 7 lapis):
+1. **Kode tantangan per-task**, dibuat agent (bukan model), dikomit ke `specHash` on-chain —
+   foto harus menampilkan kode ini tertulis, jadi foto lama/stok tidak lolos.
+2. **Duplicate check** exact-hash (upload API + registry lintas-task di agent).
+3. **Vision verification** — Claude/vendor lain membandingkan bukti vs acceptance criteria,
+   output divalidasi schema sebelum dipakai untuk aksi finansial apa pun.
+4. **Confidence gate** — ragu = REJECT, dana tetap di escrow.
+5. **Deadline check** (submit setelah deadline task = ditolak) + batas jumlah percobaan verifikasi.
+
+**Roadmap, belum diimplementasi** (jangan diklaim sudah ada saat demo):
+6. EXIF/timestamp check — foto harus baru, bukan dari Google.
+7. Redundansi — task penting dikirim ke 2–3 worker, agent cross-check jawaban.
+8. Reputation — worker jujur naik reputasi, diprioritaskan.
 5. Dan yang paling dasar: curang = tidak dibayar; escrow tidak pernah rilis tanpa verifikasi.
 
 ---
@@ -114,7 +125,7 @@ OPEN ──claim──► CLAIMED ──submitProof──► SUBMITTED ──rel
 ## 5. Scope MVP — Disiplin, Jangan Melebar
 
 **MUST (tanpa ini bukan MANDOR):**
-- [ ] Kontrak TaskEscrow + test suite lengkap, deploy Base Sepolia
+- [ ] Kontrak TaskEscrow + test suite lengkap, deploy BSC Testnet
 - [ ] Agent loop end-to-end: goal → post task → verify vision → pay → report
 - [ ] Worker PWA: lihat task → claim → upload foto → dibayar
 - [ ] Dashboard "mata agent": task, status, reasoning verifikasi, tx hash live — ini yang disorot proyektor saat demo
@@ -156,7 +167,7 @@ OPEN ──claim──► CLAIMED ──submitProof──► SUBMITTED ──rel
 2. Agent memecah → posting 5 task → tunjukkan dana masuk escrow (explorer di layar).
 3. **"Sekarang — semua orang di ruangan ini bisa jadi karyawan AI. Scan QR ini."**
 4. Penonton claim, foto, submit. Agent memverifikasi live (vision reasoning terlihat di dashboard).
-5. IDRX mendarat di wallet penonton detik itu. Minta satu orang mengangkat HP-nya: *"Anda baru saja digaji oleh AI. Dalam Rupiah."*
+5. Mock IDRX (2 desimal, mekanisme identik IDRX asli) mendarat di wallet penonton detik itu, di BSC Testnet. Minta satu orang mengangkat HP-nya: *"Anda baru saja digaji oleh AI. Dalam Rupiah."*
 
 **[2:20–2:50] Why blockchain + market**
 > "Gaji Rp5.000, instan, ke orang asing, lintas negara — mustahil di rails bank; dan agent tidak punya rekening bank. Pasarnya sudah terbukti: Meta bayar $14 miliar untuk Scale AI. Google & Coinbase sedang bangun rails pembayaran agent (AP2, x402) bareng Mastercard dan PayPal. Hivemapper membuktikan 165 ribu orang mau kerja fisik dibayar crypto. Dan Indonesia punya 86 juta pekerja informal — talent pool terbesar untuk ekonomi agent."
@@ -172,7 +183,7 @@ OPEN ──claim──► CLAIMED ──submitProof──► SUBMITTED ──rel
 
 | Pertanyaan | Jawaban |
 |---|---|
-| Worker curang? | Vision check + EXIF + redundansi multi-worker + reputation. Dan escrow berarti curang = tidak dibayar. |
+| Worker curang? | Kode tantangan per-task ter-commit on-chain (foto stok/lama tidak lolos) + duplicate-hash check + vision verification + confidence gate — semua sudah jalan hari ini (README §Layered anti-cheat). Dan escrow berarti curang = tidak dibayar. EXIF, redundansi multi-worker, dan reputation ada di roadmap, belum di MVP. |
 | Kenapa nggak Web2 saja? | Agent tak punya rekening bank; micropayment global instan; escrow tanpa pihak ketiga — justru ketiadaan escrow trustless itulah yang bikin kasus Remotasks terjadi. Hilangkan blockchain-nya → produknya mati. |
 | Bedanya dengan RentAHuman / HUMAN Protocol / Payman? | RentAHuman = marketplace matching AI↔manusia yang sudah ada — kami TIDAK klaim pertama; diferensiasi kami di proof layer: challenge-bound evidence, verifikasi berlapis, forceRelease, audit trail, IDRX. HUMAN = job market manual, bukan agent-native. Payman ($13,8M, Visa) = API fintech rails AS, tertutup. Funding mereka justru bukti tesisnya valid. |
 | Revenue? | Fee 2–5% per task + API x402 untuk agent eksternal yang mau menyewa manusia. |

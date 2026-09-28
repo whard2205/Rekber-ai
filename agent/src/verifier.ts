@@ -174,7 +174,10 @@ export class AnthropicModelVerifier implements ModelVerifier {
           ],
         },
       ],
-      output_config: { format: { type: "json_schema", schema: VERDICT_SCHEMA } },
+      // O-13: verifikasi adalah klasifikasi terstruktur (challenge terlihat? kriteria
+      // terpenuhi?), bukan reasoning berat — effort "low" memangkas latensi di panggung
+      // tanpa mengorbankan kualitas verdict untuk tugas sesederhana ini.
+      output_config: { effort: "low", format: { type: "json_schema", schema: VERDICT_SCHEMA } },
     });
 
     if (response.stop_reason === "refusal") throw new Error("Model menolak permintaan (refusal)");
