@@ -126,14 +126,22 @@ async function maybeJudge(
   await submitVerdict(deal, verdict.verdictHash, verdict.outcome, verdict.commit);
 }
 
-async function processDeal(deal: DealRecord, provider: AiProvider | null, registry: PhotoRegistry): Promise<void> {
+function isFinalStatus(status: number): boolean {
+  return status === Status.Released || status === Status.Refunded || status === Status.Split;
+}
+
+/** true kalau deal ini sudah final (Released/Refunded/Split) — dipakai runDaemon supaya deal
+ * yang sudah kelar tidak dibaca dari chain lagi tiap tick selama-lamanya (lihat komentar di
+ * runDaemon soal kenapa ini penting untuk demo yang jalan berjam-jam). */
+async function processDeal(deal: DealRecord, provider: AiProvider | null, registry: PhotoRegistry): Promise<boolean> {
   const onchain = await getDeal(deal.dealId as Hex);
   if (onchain.status === Status.Shipped) {
     await maybeCheckShipment(deal, provider);
   } else if (onchain.status === Status.Disputed) {
     await maybeJudge(deal, onchain, provider, registry);
   }
-  // Funded / Escalated / status final: tidak ada aksi agent di tick ini.
+  // Funded / Escalated: tidak ada aksi agent di tick ini.
+  return isFinalStatus(onchain.status);
 }
 
 /** 3x error API berturut-turut untuk deal yang sama -> lempar paksa ke arbiter manusia,
@@ -155,14 +163,22 @@ export async function runDaemon(): Promise<void> {
 
   const registry = new PhotoRegistry(path.join(config.dataDir, "photo-registry.json"));
   const apiRetries = new Map<string, number>();
+  // Deal yang sudah final (Released/Refunded/Split — lewat agent ATAU lewat siapa pun yang
+  // memicu refundUnshipped/releaseUnconfirmed/splitStale, §3.2) tidak pernah balik ke status
+  // aktif lagi, jadi begitu ketahuan final TIDAK PERLU dibaca dari chain lagi tiap tick.
+  // Tanpa ini daftar deal yang di-getDeal() tiap 3 detik tumbuh terus seumur proses daemon
+  // (jam demo bisa berjalan berjam-jam) sampai satu tick makan waktu lebih lama dari
+  // POLL_MS sendiri — deal yang BENAR-BENAR baru jadi telat diputus.
+  const finalized = new Set<string>();
 
   for (;;) {
     await sleep(config.pollMs);
-    const deals = listDeals().filter((d) => !!d.txs.fund); // hanya deal yang sudah didanai on-chain
+    const deals = listDeals().filter((d) => !!d.txs.fund && !finalized.has(d.dealCode));
 
     for (const deal of deals) {
       try {
-        await processDeal(deal, provider, registry);
+        const isFinal = await processDeal(deal, provider, registry);
+        if (isFinal) finalized.add(deal.dealCode);
         apiRetries.delete(deal.dealCode);
       } catch (err) {
         const attempts = (apiRetries.get(deal.dealCode) ?? 0) + 1;

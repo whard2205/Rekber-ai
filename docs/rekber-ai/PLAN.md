@@ -310,7 +310,7 @@ Loop tiap `POLL_MS` (3000):
 - [x] **R-10 · Web: `/panggung`**
   *Cek:* di layar 1920×1080 terbaca dari jauh; update ≤ 3 detik setelah event; QR membuka deal demo.
 
-- [ ] **R-11 · Smoke test e2e otomatis (lokal, AI mock)**
+- [x] **R-11 · Smoke test e2e otomatis (lokal, AI mock)**
   `web/scripts/smoke-test.mjs` (pola MANDOR): membuat 4 deal lewat HTTP API memakai kunci yang di-generate di Node (tanda tangan typed data seperti browser), menjalankan 4 skenario R-09, dan satu skenario timeout via RPC `evm_increaseTime` + `releaseUnconfirmed`. Semua harus berakhir di status yang benar dan verdictHash cocok dengan event on-chain.
   *Cek:* `node scripts/smoke-test.mjs` → `SMOKE TEST LULUS (5 skenario)`.
 
