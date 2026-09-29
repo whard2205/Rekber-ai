@@ -42,20 +42,39 @@ stateDiagram-v2
   Disputed --> Escalated: AI unsure
   Escalated --> Refunded: human arbiter
   Escalated --> Released: human arbiter
-  Disputed --> Split: unresolved by deadline (50/50)
-  Escalated --> Split: unresolved by deadline (50/50)
+  Disputed --> Split: deadline, 50/50
+  Escalated --> Split: deadline, 50/50
 ```
 
 ```mermaid
-flowchart LR
-  S[Seller - phone] -->|create deal, packing photo| W[Web app + relayer<br/>Next.js]
-  B[Buyer - phone] -->|pay, confirm / dispute| W
-  W -->|user-signed tx<br/>relayer pays gas| C[(RekberEscrow<br/>BNB Chain)]
-  A[AI arbiter agent] -->|watches status| C
-  A -->|reads evidence| D[(Evidence photos<br/>server, hashed on-chain)]
-  W --> D
-  A -->|resolve / escalate + verdictHash| C
-  H[Human arbiter] -->|decides escalated cases| C
+flowchart TB
+  S["Seller - phone"] -->|create deal, packing photo| W["Web app + relayer<br/>Next.js"]
+  B["Buyer - phone"] -->|pay, confirm / dispute| W
+  W -->|stores| D[("Evidence photos<br/>server, hashed on-chain")]
+  W -->|user-signed tx, relayer pays gas| C[("RekberEscrow<br/>BNB Chain")]
+  D -->|reads evidence| A["AI arbiter agent"]
+  A <-->|watches status, then calls<br/>resolve / escalate + verdictHash| C
+  H["Human arbiter"] -->|decides escalated cases| C
+```
+
+### How the agent decides a dispute
+
+The model never gets the last word on its own: two cheap checks run around it, and anything short of a confident, well-formed answer goes to a human.
+
+```mermaid
+flowchart TD
+  A["Buyer opens a dispute<br/>unboxing photo + complaint"] --> B["Agent waits for the seller's reply<br/>or for the reply window to close"]
+  B --> C{"Unboxing photo already used<br/>in another deal?"}
+  C -->|yes: likely recycled| X["ESCALATE to human arbiter"]
+  C -->|no| E["Vision model compares the promised spec<br/>with listing, packing, shipping label,<br/>unboxing and seller-reply photos"]
+  E -->|API fails 3x in a row| X
+  E --> F{"Well-formed answer and<br/>confidence at least 0.85?"}
+  F -->|no| X
+  F -->|yes| G["REFUND or RELEASE"]
+  G --> H["Agent's own wallet calls resolve()<br/>with verdictHash of its reasoning"]
+  X --> I["Agent's own wallet calls escalate()<br/>with verdictHash"]
+  H --> J[("RekberEscrow<br/>BNB Chain")]
+  I --> J
 ```
 
 ### Trust model
