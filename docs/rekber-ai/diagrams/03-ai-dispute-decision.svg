@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800" role="img" aria-labelledby="t d">
+<title id="t">How the AI agent settles a dispute</title>
+<desc id="d">A recycled-photo check runs before the vision model and a confidence gate of 0.85 runs after it; anything that fails goes to a human arbiter. Both outcomes are signed on-chain with a verdictHash.</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#5B6573"/></marker></defs>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:#14202E}
+.t{font-size:24px;font-weight:700}.st{font-size:15px;fill:#5B6573}
+.n{font-size:16px;font-weight:700}.s{font-size:13.5px;fill:#5B6573}
+.l{font-size:13.5px;fill:#3F4A57;paint-order:stroke;stroke:#FBF9F4;stroke-width:5px;stroke-linejoin:round}
+.k{font-size:12px;font-weight:700;letter-spacing:1.5px;fill:#B7791F}
+.e{fill:none;stroke:#5B6573;stroke-width:1.75;marker-end:url(#a)}
+.b{fill:#fff;stroke:#14202E;stroke-width:1.5}
+</style>
+<rect x=".5" y=".5" width="999" height="799" rx="16" fill="#FBF9F4" stroke="#E5DFD3"/>
+<text x="40" y="52" class="t">How the AI agent settles a dispute</text>
+<text x="40" y="80" class="st">The model never decides alone: a free check runs before it and a confidence gate after it.</text>
+
+<path class="e" d="M330 170V200"/>
+<path class="e" d="M330 260V290"/>
+<path class="e" d="M330 400V430"/><text x="342" y="420" class="l">no</text>
+<path class="e" d="M330 520V550"/>
+<path class="e" d="M330 670V700"/><text x="342" y="690" class="l">yes</text>
+<path class="e" d="M500 345H660"/><text x="580" y="337" class="l" text-anchor="middle">yes: likely recycled</text>
+<path class="e" d="M500 475H660"/><text x="580" y="467" class="l" text-anchor="middle">API fails 3× in a row</text>
+<path class="e" d="M500 610H660"/><text x="580" y="602" class="l" text-anchor="middle">no, or model unsure</text>
+
+<rect class="b" x="160" y="110" width="340" height="60" rx="10"/>
+<text x="330" y="135" class="n" text-anchor="middle">Dispute opened</text><text x="330" y="156" class="s" text-anchor="middle">buyer uploads an unboxing photo + complaint</text>
+<rect class="b" x="160" y="200" width="340" height="60" rx="10"/>
+<text x="330" y="225" class="n" text-anchor="middle">Seller reply window</text><text x="330" y="246" class="s" text-anchor="middle">agent waits for the reply, or for the timeout</text>
+
+<text x="40" y="340" class="k">LAYER 1</text><text x="40" y="358" class="s">free, before</text><text x="40" y="375" class="s">any AI call</text>
+<path class="b" d="M330 290L500 345L330 400L160 345Z"/>
+<text x="330" y="340" class="n" text-anchor="middle" font-size="15">Unboxing photo used</text><text x="330" y="360" class="n" text-anchor="middle" font-size="15">in another deal?</text>
+
+<text x="40" y="468" class="k">LAYER 2</text><text x="40" y="486" class="s">the model reads</text><text x="40" y="503" class="s">every photo</text>
+<rect class="b" x="160" y="430" width="340" height="90" rx="10"/>
+<text x="330" y="458" class="n" text-anchor="middle">Vision model</text>
+<text x="330" y="480" class="s" text-anchor="middle">compares the seller's promised spec with</text>
+<text x="330" y="498" class="s" text-anchor="middle">listing, packing, shipping label,</text>
+<text x="330" y="515" class="s" text-anchor="middle">unboxing and seller-reply photos</text>
+
+<text x="40" y="605" class="k">LAYER 3</text><text x="40" y="623" class="s">fail-safe gate</text>
+<path class="b" d="M330 550L500 610L330 670L160 610Z"/>
+<text x="330" y="604" class="n" text-anchor="middle" font-size="15">Valid answer and</text><text x="330" y="626" class="n" text-anchor="middle" font-size="15">confidence <tspan fill="#B7791F" font-size="18">≥ 0.85</tspan>?</text>
+
+<rect x="160" y="700" width="340" height="70" rx="10" fill="#E4F2E7" stroke="#2F7A4A" stroke-width="1.5"/>
+<text x="330" y="728" class="n" text-anchor="middle" style="fill:#1E4D2F">REFUND or RELEASE</text>
+<text x="330" y="750" class="s" text-anchor="middle">agent's wallet calls resolve() + verdictHash</text>
+
+<rect x="660" y="300" width="300" height="360" rx="12" fill="#FFF1D6" stroke="#C98A1E" stroke-width="1.5"/>
+<text x="810" y="440" class="n" text-anchor="middle" font-size="18" style="fill:#7A4E0B">ESCALATE</text>
+<text x="810" y="468" class="s" text-anchor="middle">agent's wallet calls</text>
+<text x="810" y="486" class="s" text-anchor="middle">escalate() + verdictHash</text>
+<text x="810" y="522" class="s" text-anchor="middle">a human arbiter then decides</text>
+<text x="810" y="540" class="s" text-anchor="middle">refund or release</text>
+
+<text x="560" y="728" class="s">verdictHash = keccak256 of the written</text>
+<text x="560" y="746" class="s">verdict, stored on-chain with the decision</text>
+</svg>

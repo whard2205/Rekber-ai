@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 660" width="1100" height="660" role="img" aria-labelledby="t d">
+<title id="t">Rekber AI system architecture</title>
+<desc id="d">Seller and buyer phones talk to the web app and relayer, which submits user-signed transactions to the RekberEscrow contract. The AI arbiter agent reads evidence and settles disputes on-chain; a human arbiter handles escalated cases.</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#5B6573"/></marker></defs>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:#14202E}
+.t{font-size:24px;font-weight:700}.st{font-size:15px;fill:#5B6573}
+.n{font-size:16px;font-weight:700}.s{font-size:13.5px;fill:#5B6573}
+.i{font-size:13.5px;fill:#C9D2DC}
+.l{font-size:13.5px;fill:#3F4A57;paint-order:stroke;stroke:#FBF9F4;stroke-width:5px;stroke-linejoin:round}
+.g{font-size:12px;font-weight:700;letter-spacing:1.5px;fill:#8A7F6C}
+.e{fill:none;stroke:#5B6573;stroke-width:1.75;marker-end:url(#a)}
+.b{fill:#fff;stroke:#14202E;stroke-width:1.5}
+</style>
+<rect x=".5" y=".5" width="1099" height="659" rx="16" fill="#FBF9F4" stroke="#E5DFD3"/>
+<text x="40" y="52" class="t">System architecture</text>
+<text x="40" y="80" class="st">Users install nothing and pay no gas. Only the contract holds the deal money.</text>
+
+<text x="40" y="132" class="g">PEOPLE</text>
+<rect x="280" y="110" width="480" height="410" rx="12" fill="#F3EEE3" stroke="#C9BFAE" stroke-dasharray="6 5"/>
+<text x="300" y="132" class="g">OFF-CHAIN · OUR SERVER</text>
+<rect x="800" y="110" width="260" height="240" rx="12" fill="#E9ECF0" stroke="#9AA5B1" stroke-dasharray="6 5"/>
+<text x="820" y="132" class="g">ON-CHAIN · BNB SMART CHAIN</text>
+
+<path class="e" d="M240 190H300"/>
+<path class="e" d="M240 290H300"/>
+<path class="e" d="M520 190H820"/><text x="660" y="164" class="l" text-anchor="middle">user-signed tx</text><text x="660" y="182" class="l" text-anchor="middle">relayer pays the gas</text>
+<path class="e" d="M410 330V400"/><text x="422" y="370" class="l">stores photos</text>
+<path class="e" d="M520 440H560"/>
+<path class="e" d="M820 250H650V400"/><text x="735" y="242" class="l" text-anchor="middle">watches deals</text>
+<path class="e" d="M700 400V290H820"/><text x="760" y="312" class="l" text-anchor="middle">resolve / escalate</text><text x="760" y="330" class="l" text-anchor="middle">+ verdictHash</text>
+<path class="e" d="M240 590H1000V330"/><text x="620" y="582" class="l" text-anchor="middle">signs resolve() itself · escalated cases only</text>
+
+<rect class="b" x="40" y="150" width="200" height="80" rx="10"/>
+<text x="60" y="178" class="n">Seller</text><text x="60" y="199" class="s">phone browser</text><text x="60" y="217" class="s">lists and photographs item</text>
+<rect class="b" x="40" y="250" width="200" height="80" rx="10"/>
+<text x="60" y="278" class="n">Buyer</text><text x="60" y="299" class="s">phone browser</text><text x="60" y="317" class="s">pays, confirms or disputes</text>
+<text x="40" y="360" class="s" font-style="italic">Signing keys are made in the</text>
+<text x="40" y="378" class="s" font-style="italic">browser and never leave it.</text>
+<rect class="b" x="40" y="560" width="200" height="60" rx="10"/>
+<text x="60" y="585" class="n">Human arbiter</text><text x="60" y="605" class="s">escalated cases only</text>
+
+<rect class="b" x="300" y="150" width="220" height="180" rx="10"/>
+<text x="320" y="180" class="n">Web app + relayer</text><text x="320" y="201" class="s">Next.js</text>
+<text x="320" y="233" class="s">Forwards each user-signed</text><text x="320" y="251" class="s">action and pays the gas.</text>
+<text x="320" y="283" class="s">Cannot move money without</text><text x="320" y="301" class="s">the user's own signature.</text>
+<rect class="b" x="300" y="400" width="220" height="80" rx="10"/>
+<text x="320" y="428" class="n">Evidence store</text><text x="320" y="449" class="s">photos stay on our server</text><text x="320" y="467" class="s">only their hashes go on-chain</text>
+<rect x="560" y="400" width="180" height="80" rx="10" fill="#FFF1D6" stroke="#C98A1E" stroke-width="1.5"/>
+<text x="576" y="428" class="n">AI arbiter agent</text><text x="576" y="449" class="s">reads the photos</text><text x="576" y="467" class="s">signs with own wallet</text>
+
+<rect x="820" y="150" width="220" height="180" rx="10" fill="#14202E"/>
+<text x="840" y="182" class="n" style="fill:#F5F1E8">RekberEscrow</text>
+<text x="840" y="212" class="i">Holds the IDRX.</text><text x="840" y="230" class="i">Nobody can withdraw</text><text x="840" y="248" class="i">outside the rules.</text>
+<text x="840" y="278" class="i">Verified on BscScan.</text>
+<rect x="840" y="296" width="36" height="4" fill="#E3A33B"/>
+</svg>

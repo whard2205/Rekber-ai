@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800" role="img" aria-labelledby="t d">
+<title id="t">Deal lifecycle on RekberEscrow</title>
+<desc id="d">Funded, Shipped, Disputed and Escalated states, ending in Released, Refunded or a 50/50 Split.</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#5B6573"/></marker></defs>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:#14202E}
+.t{font-size:24px;font-weight:700}.st{font-size:15px;fill:#5B6573}
+.n{font-size:16px;font-weight:700;letter-spacing:.5px}.s{font-size:13.5px;fill:#5B6573}
+.l{font-size:13.5px;fill:#3F4A57;paint-order:stroke;stroke:#FBF9F4;stroke-width:5px;stroke-linejoin:round}
+.g{font-size:12px;font-weight:700;letter-spacing:1.5px;fill:#8A7F6C}
+.e{fill:none;stroke:#5B6573;stroke-width:1.75;marker-end:url(#a)}
+.b{fill:#fff;stroke:#14202E;stroke-width:1.5}
+</style>
+<rect x=".5" y=".5" width="999" height="799" rx="16" fill="#FBF9F4" stroke="#E5DFD3"/>
+<text x="40" y="52" class="t">Deal lifecycle on RekberEscrow</text>
+<text x="40" y="80" class="st">Every deal ends Released, Refunded or Split. Timeouts can be triggered by anyone, so nothing gets stuck.</text>
+
+<rect x="360" y="395" width="280" height="220" rx="12" fill="#F3EEE3" stroke="#C9BFAE" stroke-dasharray="6 5"/>
+<text x="374" y="604" class="g">IN DISPUTE</text>
+
+<path class="e" d="M500 125V150"/><circle cx="500" cy="118" r="7" fill="#14202E"/>
+<text x="514" y="142" class="l">buyer pays · gasless</text>
+<path class="e" d="M500 206V270"/><text x="512" y="243" class="l">seller ships + photo proof</text>
+<path class="e" d="M500 326V420"/><text x="512" y="368" class="l">buyer disputes + unboxing photo</text>
+<path class="e" d="M500 476V530"/><text x="512" y="507" class="l">AI unsure</text>
+<path class="e" d="M500 615V690"/><text x="512" y="657" class="l">no verdict before the deadline</text>
+
+<path class="e" d="M610 178H900V690"/><text x="630" y="170" class="l">not shipped in time</text>
+<path class="e" d="M390 298H100V690"/><text x="370" y="290" class="l" text-anchor="end">buyer confirms, or stays silent</text>
+<path class="e" d="M390 448H180V690"/><text x="350" y="440" class="l" text-anchor="end">AI: RELEASE</text>
+<path class="e" d="M610 448H820V690"/><text x="650" y="440" class="l">AI: REFUND</text>
+<path class="e" d="M390 558H240V690"/><text x="352" y="550" class="l" text-anchor="end">human arbiter</text>
+<path class="e" d="M610 558H760V690"/><text x="648" y="550" class="l">human arbiter</text>
+
+<rect class="b" x="390" y="150" width="220" height="56" rx="10"/>
+<text x="500" y="174" class="n" text-anchor="middle">FUNDED</text><text x="500" y="195" class="s" text-anchor="middle">money locked in the contract</text>
+<rect class="b" x="390" y="270" width="220" height="56" rx="10"/>
+<text x="500" y="294" class="n" text-anchor="middle">SHIPPED</text><text x="500" y="315" class="s" text-anchor="middle">item photo + deal code</text>
+<rect class="b" x="390" y="420" width="220" height="56" rx="10"/>
+<text x="500" y="444" class="n" text-anchor="middle">DISPUTED</text><text x="500" y="465" class="s" text-anchor="middle">AI agent reviews the evidence</text>
+<rect x="390" y="530" width="220" height="56" rx="10" fill="#FFF1D6" stroke="#C98A1E" stroke-width="1.5"/>
+<text x="500" y="554" class="n" text-anchor="middle">ESCALATED</text><text x="500" y="575" class="s" text-anchor="middle">a human arbiter decides</text>
+
+<rect x="60" y="690" width="240" height="70" rx="10" fill="#E4F2E7" stroke="#2F7A4A" stroke-width="1.5"/>
+<text x="180" y="720" class="n" text-anchor="middle" style="fill:#1E4D2F">RELEASED</text><text x="180" y="742" class="s" text-anchor="middle">seller paid, minus 1% fee</text>
+<rect x="390" y="690" width="220" height="70" rx="10" fill="#ECEEF1" stroke="#6B7280" stroke-width="1.5"/>
+<text x="500" y="720" class="n" text-anchor="middle">SPLIT 50 / 50</text><text x="500" y="742" class="s" text-anchor="middle">half each, no fee</text>
+<rect x="700" y="690" width="240" height="70" rx="10" fill="#FBE7DF" stroke="#B5532F" stroke-width="1.5"/>
+<text x="820" y="720" class="n" text-anchor="middle" style="fill:#7A2E14">REFUNDED</text><text x="820" y="742" class="s" text-anchor="middle">buyer gets it all back, no fee</text>
+</svg>

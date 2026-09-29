@@ -31,7 +31,7 @@ Team: Gedung Hijau.
 
 **Project Detail (markdown, supports Mermaid)**
 > Paste the full contents of [`README.md`](../../README.md) — it already has the one-sentence pitch, problem, solution, live testnet addresses, architecture diagrams (state machine + trust flow), trust model table, "why blockchain / why AI", how to run, tests, env vars, and honest known limitations. Don't duplicate it here by hand; copy the file verbatim so it can't drift out of sync.
-> Before pasting: check the form's PREVIEW tab — the 3 Mermaid diagrams render in Mermaid 10 and 11; footnotes (`[^1]`) may show as plain text if the form's renderer doesn't support them.
+> Before pasting: check the form's PREVIEW tab — the 3 diagrams are SVGs in `docs/rekber-ai/diagrams/`, linked by absolute raw.githubusercontent URLs so they load outside GitHub too; footnotes (`[^1]`) may show as plain text if the form's renderer doesn't support them.
 
 **GitHub Repo (public)**
 > https://github.com/whard2205/Rekber-ai

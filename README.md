@@ -30,52 +30,15 @@ Example transaction per status (Funded / Shipped / Released / Disputed / Refunde
 
 ## Architecture
 
-```mermaid
-stateDiagram-v2
-  [*] --> Funded: buyer pays
-  Funded --> Shipped: seller ships + evidence
-  Funded --> Refunded: not shipped by deadline
-  Shipped --> Released: buyer confirms / silent past deadline
-  Shipped --> Disputed: buyer disputes + evidence
-  Disputed --> Refunded: AI verdict REFUND
-  Disputed --> Released: AI verdict RELEASE
-  Disputed --> Escalated: AI unsure
-  Escalated --> Refunded: human arbiter
-  Escalated --> Released: human arbiter
-  Disputed --> Split: deadline, 50/50
-  Escalated --> Split: deadline, 50/50
-```
+![Deal lifecycle: Funded, Shipped, Disputed and Escalated, ending in Released, Refunded or a 50/50 Split](https://raw.githubusercontent.com/whard2205/Rekber-ai/main/docs/rekber-ai/diagrams/01-deal-lifecycle.svg)
 
-```mermaid
-flowchart TB
-  S["Seller - phone"] -->|create deal, packing photo| W["Web app + relayer<br/>Next.js"]
-  B["Buyer - phone"] -->|pay, confirm / dispute| W
-  W -->|stores| D[("Evidence photos<br/>server, hashed on-chain")]
-  W -->|user-signed tx, relayer pays gas| C[("RekberEscrow<br/>BNB Chain")]
-  D -->|reads evidence| A["AI arbiter agent"]
-  A <-->|watches status, then calls<br/>resolve / escalate + verdictHash| C
-  H["Human arbiter"] -->|decides escalated cases| C
-```
+![System architecture: phones, web app + relayer, evidence store, AI arbiter agent, RekberEscrow on BNB Chain, human arbiter](https://raw.githubusercontent.com/whard2205/Rekber-ai/main/docs/rekber-ai/diagrams/02-architecture.svg)
 
 ### How the agent decides a dispute
 
 The model never gets the last word on its own: two cheap checks run around it, and anything short of a confident, well-formed answer goes to a human.
 
-```mermaid
-flowchart TD
-  A["Buyer opens a dispute<br/>unboxing photo + complaint"] --> B["Agent waits for the seller's reply<br/>or for the reply window to close"]
-  B --> C{"Unboxing photo already used<br/>in another deal?"}
-  C -->|yes: likely recycled| X["ESCALATE to human arbiter"]
-  C -->|no| E["Vision model compares the promised spec<br/>with listing, packing, shipping label,<br/>unboxing and seller-reply photos"]
-  E -->|API fails 3x in a row| X
-  E --> F{"Well-formed answer and<br/>confidence at least 0.85?"}
-  F -->|no| X
-  F -->|yes| G["REFUND or RELEASE"]
-  G --> H["Agent's own wallet calls resolve()<br/>with verdictHash of its reasoning"]
-  X --> I["Agent's own wallet calls escalate()<br/>with verdictHash"]
-  H --> J[("RekberEscrow<br/>BNB Chain")]
-  I --> J
-```
+![How the AI agent settles a dispute: recycled-photo check, vision model, confidence gate of 0.85, escalate to a human otherwise](https://raw.githubusercontent.com/whard2205/Rekber-ai/main/docs/rekber-ai/diagrams/03-ai-dispute-decision.svg)
 
 ### Trust model
 
