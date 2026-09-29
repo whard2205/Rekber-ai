@@ -1,204 +1,159 @@
-# MANDOR ⛑️
+# Rekber AI
 
-**MANDOR is a BNB-native human execution and verifiable proof layer for autonomous AI agents.**
+**Rekber without an admin: funds held by a smart contract, disputes settled by AI.**
 
-An AI agent can autonomously create a real-world task, fund an IDRX escrow on-chain, accept a human worker, verify tamper-resistant photo evidence through a layered anti-cheat pipeline, and release payment — with every decision auditable.
-
-> *Mandor* (Indonesian): a foreman — the person who coordinates workers and makes sure they get paid.
+Built for the [Indonesia Web3 Hackathon 2026](https://indonesiaweb3hack.xyz) (Binance Academy × BNB Chain × Coinvestasi) — AI Agents / Finance & Commerce track.
 
 ---
 
-## Why
+## The problem
 
-AI agents can reason, browse, and pay — but they cannot see or act in the physical world. Checking a price in a warung, photographing a road condition, confirming a store is actually open: the real world has no API. Humans are that API — but the existing rails for "humans working for AI pipelines" are broken. The Washington Post [documented](https://www.washingtonpost.com/world/2023/08/28/scale-ai-remotasks-philippines-artificial-intelligence/) how data-labeling workers in Southeast Asia routinely had payments delayed, reduced, or cancelled with no recourse.
+Millions of trades in Indonesia happen outside marketplaces — Facebook groups, Instagram, WhatsApp, gaming communities — where there is no escrow. Online shopping fraud is the **#1 scam type** reported to Indonesia's Anti-Scam Centre (IASC, OJK): 53,928 reports between Nov 2024 and Oct 2025, out of ~299,000 total scam reports and Rp7 trillion in losses.[^1] People rely on "rekber" (rekening bersama, a middleman who holds the money), but fake rekber is itself a documented scam pattern,[^5][^6] licensed rekber services still hold your money and settle disputes manually,[^7] and even inside real marketplaces the infamous "ordered a phone, received a brick" cases end with the shop and the courier blaming each other — because nobody collected evidence of who cheated.[^4]
 
-MANDOR fixes both sides structurally:
+## The solution
 
-- **For agents**: a programmatic way to buy verified physical-world execution.
-- **For workers**: wages locked in escrow *before* work starts, instant on-chain bounty settlement in IDRX (Indonesian Rupiah stablecoin), and a contract-level guarantee (`forceRelease`) that pays the worker automatically if the agent goes silent after evidence is submitted.
+Rekber AI replaces the human middleman with two things a smart contract and an AI agent are actually good at:
 
-## What it is NOT
+1. **The money is locked in a BNB Chain smart contract.** Nobody — including us — can withdraw it. The relayer that pays gas on the user's behalf cannot move funds without the buyer's or seller's own signature.
+2. **An AI agent judges the evidence.** The seller must photograph the real item next to a unique deal code before shipping (not just a sealed box). If the buyer confirms, or stays silent until the window closes, funds release to the seller. If the buyer disputes, the AI arbiter compares the seller's promised spec, the packing photo and the buyer's unboxing photo, then autonomously refunds or releases on-chain — or escalates to a human when unsure. Every verdict is committed on-chain as a hash of its reasoning, so anyone can recompute it and check it against the event log.
 
-Honest scope, stated up front:
+Full write-up (rules of evidence, competitor analysis, regulatory notes, sources): [`docs/rekber-ai/BLUEPRINT.md`](docs/rekber-ai/BLUEPRINT.md).
 
-- **Not the first AI-to-human task product.** [RentAHuman](https://rentahuman.ai), [HUMAN Protocol](https://humanprotocol.org), and [Payman](https://paymanai.com) exist. See [Competitive landscape](#competitive-landscape).
-- **Not "trustless AI verification."** The verifier is an **off-chain oracle operated by the agent** — a trust assumption we make explicit and mitigate (see [Trust model](#trust-model)).
-- **Not a wage/employment product.** Rewards are on-chain bounty settlements, not salaries; regulatory treatment of gig bounties varies by jurisdiction.
+## Live on BSC Testnet
 
----
+| Contract | Address | Status |
+|---|---|---|
+| `RekberEscrow` | [`0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) | Verified |
+| `MockIDRX` (test token, 0 decimals — matches real IDRX) | [`0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3`](https://testnet.bscscan.com/address/0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3#code) | Verified |
 
-## Golden path
-
-```
-Agent (Claude)                     Chain (BSC)                    Human worker (phone)
-──────────────                     ───────────                    ────────────────────
-1. receives goal
-2. plans tasks that need humans
-3. generates anti-cheat challenge
-   code per task (in specHash) ──► postTask() locks IDRX
-                                   in TaskEscrow
-                                                                  4. opens task page (QR/link)
-                                                                  5. burner wallet auto-created
-                                                    claimFor() ◄─ 6. taps "Ambil Kerjaan"
-                                                    (relayer pays gas — worker needs no ETH/BNB)
-                                                                  7. photographs proof WITH the
-                                                                     challenge code visible
-                                              submitProofFor() ◄─ 8. uploads photo
-                                   (keccak256 of file = on-chain proofHash)
-9. layered verification:
-   size → deadline → duplicate
-   registry → vision model →
-   schema validation →
-   confidence gate
-10a. APPROVE ────────────────────► releaseBounty() pays worker
-10b. REJECT  ────────────────────► rejectAndReopen() (funds stay locked)
-11. structured verdict + tx hash
-    appended to audit log                                         12. sees payout + explorer link
-```
-
-**If the agent crashes or stalls after step 8**, anyone can call `forceRelease()` after the verify window (default 24 h) and the worker is paid. The agent can never withdraw funds once evidence is submitted — its only moves are *pay* or *reopen*.
-
----
+Example transaction per status (Funded / Shipped / Released / Disputed / Refunded): *added after the live 2-phone testnet run — see [`docs/rekber-ai/PLAN.md`](docs/rekber-ai/PLAN.md) R-13.*
 
 ## Architecture
 
-| Workspace | Stack | Role |
-|---|---|---|
-| [`contracts/`](contracts/) | Solidity 0.8.24, Hardhat, OpenZeppelin | `TaskEscrow` state machine (`Open → Claimed → Submitted → Paid/Refunded`) + `MockIDRX` test token (2 decimals, matching IDRX) |
-| [`agent/`](agent/) | TypeScript, viem, `@anthropic-ai/sdk` | Autonomous employer: plans tasks (structured outputs), posts escrow, watches chain, runs the verification pipeline, settles — no human operator in the loop |
-| [`worker-app/`](worker-app/) | Next.js 15, viem | Mobile PWA for workers + relayer API (server holds relayer key, pays gas for `claimFor`/`submitProofFor`) + **`/panggung` stage screen** (projector view: live task status, agent decision feed, QR for the audience) |
+```mermaid
+stateDiagram-v2
+  [*] --> Funded: buyer pays
+  Funded --> Shipped: seller ships + evidence
+  Funded --> Refunded: not shipped by deadline
+  Shipped --> Released: buyer confirms / silent past deadline
+  Shipped --> Disputed: buyer disputes + evidence
+  Disputed --> Refunded: AI verdict REFUND
+  Disputed --> Released: AI verdict RELEASE
+  Disputed --> Escalated: AI unsure
+  Escalated --> Refunded: human arbiter
+  Escalated --> Released: human arbiter
+  Disputed --> Split: unresolved by deadline (50/50)
+  Escalated --> Split: unresolved by deadline (50/50)
+```
 
-The AI provider sits behind a `ModelVerifier` interface ([`agent/src/verifier.ts`](agent/src/verifier.ts)): `AnthropicModelVerifier` (primary), `OpenAIModelVerifier` (vendor fallback, e.g. `gpt-4o`, via `VERIFIER_PROVIDER=openai`), and `MockModelVerifier` (deterministic byte rules, clearly `[MOCK]`-labeled) for offline testing. The financial gate (`parseModelVerdict` + confidence threshold) applies identically to every provider.
-
-### Layered anti-cheat verification
-
-| Layer | Mechanism | Catches |
-|---|---|---|
-| 1 | Per-task **challenge code** generated by the agent (not the model), committed on-chain inside `specHash` | Recycled/stock photos — the code must be visibly written in the photo |
-| 2 | File type + 8 MB size validation (API and pipeline) | Malicious/absurd uploads |
-| 3 | Exact-hash **duplicate check** at upload (HTTP 409) + cross-task **proof registry** in the agent | Same photo reused across tasks |
-| 4 | Deadline check — enforced **on-chain** in `TaskEscrow._submit` (reverts `DeadlinePassed`) and cross-checked off-chain against `submittedAt` | Late submissions |
-| 5 | Multimodal model evaluation returning **strict JSON**, schema-validated before any financial action | Irrelevant photos, screenshots, unmet criteria |
-| 6 | **Confidence gate** (`CONFIDENCE_THRESHOLD`, default 0.8): ambiguous = REJECT, funds stay in escrow | Model uncertainty being exploited |
-| 7 | **Verification cap** per task (`MAX_VERIFICATIONS_PER_TASK`, default 5) | Resubmission spam burning API budget |
-
-Verdicts are structured (`challengeMatched`, `requirementsMatched`, `duplicateDetected`, `confidence`, `decision`, `reasons[]`, `evidenceHash`) and every decision is appended to `agent/missions/audit-log.jsonl` with the worker address and settlement tx hash — **auditable agent decisions**, not a black box. A `verdictHash` (`keccak256` of the verdict's decision, reasons, confidence, evidence hash and verifier name) is committed on-chain in the `BountyReleased`/`TaskReopened` events for **every** APPROVE and REJECT, so a REJECT's reasoning is publicly checkable too, not just the paid ones — anyone can recompute the hash from the audit log and match it against the explorer.
-
-A `TaskEscrow`-level liveness guard: a task stuck `Claimed` with no proof for longer than `claimWindow` (default 10 min) can be claimed by another worker — one stale claim can't freeze a task until its full deadline.
+```mermaid
+flowchart LR
+  S[Seller - phone] -->|create deal, packing photo| W[Web app + relayer<br/>Next.js]
+  B[Buyer - phone] -->|pay, confirm / dispute| W
+  W -->|user-signed tx<br/>relayer pays gas| C[(RekberEscrow<br/>BNB Chain)]
+  A[AI arbiter agent] -->|watches status| C
+  A -->|reads evidence| D[(Evidence photos<br/>server, hashed on-chain)]
+  W --> D
+  A -->|resolve / escalate + verdictHash| C
+  H[Human arbiter] -->|decides escalated cases| C
+```
 
 ### Trust model
 
-Stated explicitly, because "trustless AI" is not a thing:
-
-| Party | Trusts | Mitigation |
+| Party | Has to trust | Mitigation |
 |---|---|---|
-| Worker | Agent to verify honestly | `forceRelease`: agent silence past the verify window = worker gets paid, enforced by the contract; rejected work reopens with reasons shown in the app |
-| Worker | Relayer to relay claims/submissions | Worker may also call `claimTask`/`submitProof` directly on-chain with their own gas |
-| Agent | Its own verifier oracle (it runs it) | — |
-| Both | Photo storage on the operator server | Only `keccak256` evidence hashes go on-chain; raw photos and PII are **never** published on-chain. IPFS/CID storage is the documented upgrade path |
+| Buyer | Seller ships the item | Funds are locked; not shipped → automatic refund |
+| Seller | Buyer doesn't withhold confirmation forever | Buyer silent past the window → funds auto-release to seller |
+| Both | The AI judges fairly | Public rules of evidence, confidence gate, escalation to a human, reasoning + verdictHash committed on-chain |
+| Both | The operator (relayer / arbiter) | Relayer can't act without the user's own signature; the arbiter can only choose refund/release/escalate — it can never divert funds; if the operator disappears, an unresolved dispute splits 50/50 automatically |
+| Both | Evidence storage on our server | Only the hash is on-chain; raw photos are never published on-chain. Roadmap: BNB Greenfield/IPFS |
 
----
+### Why blockchain, why AI
+
+| Question | Answer |
+|---|---|
+| Why blockchain? | The core problem is a party that can run off with the money. Here, the contract holds it — we can't touch it either. The relayer only pays gas; without the buyer's/seller's own signature it can't do anything. Every verdict is publicly checkable on BscScan. |
+| Why AI? | Judging photo evidence used to require a human admin on call. The agent reads the packing/unboxing photos, compares them against the seller's promised spec, and decides in seconds — with a written reason. |
+| Why an *agent*, not just a model? | It runs autonomously: watches the contract, collects evidence, waits for the seller's response window, decides, **executes the on-chain settlement with its own wallet**, and knows when to escalate. |
 
 ## Running locally
 
-Prereqs: Node 20+.
+Requires Node ≥ 22.5 (`node:sqlite`-free here, but the agent uses `node:test`; no exotic runtime needs).
 
 ```bash
 # 1. Contracts — local chain + deploy
 cd contracts && npm install
 npm run node                 # terminal 1: local chain on :8545
-npm run deploy:localhost     # terminal 2: deploys MockIDRX + TaskEscrow, funds agent
-npm run export-abi
+npm run deploy:localhost     # terminal 2: deploys MockIDRX + RekberEscrow
+npm run export-abi           # writes ABIs into agent/ and web/
 
-# 2. Agent — the autonomous employer
+# 2. Agent — the AI arbiter daemon
 cd ../agent && npm install
-cp .env.example .env         # fill AGENT_PRIVATE_KEY (hardhat account #0 for local)
-                             # MANDOR_MOCK_BRAIN=1 to run without an API key
-npm start -- "Saya butuh 2 foto jempol dari pengunjung venue"
+cp .env.example .env         # AI_ARBITER_PRIVATE_KEY = hardhat account #1 for local
+npm start                    # polls every POLL_MS, mock provider by default
 
-# 3. Worker app — what humans use
-cd ../worker-app && npm install
-cp .env.example .env         # fill RELAYER_PRIVATE_KEY (hardhat account #0 for local)
-npm run dev                  # http://localhost:3001, open from a phone on the same LAN
+# 3. Web — what buyers and sellers use
+cd ../web && npm install
+cp .env.example .env         # RELAYER_PRIVATE_KEY = hardhat account #2 for local
+npm run dev                  # http://localhost:3001
 ```
 
 ### Tests
 
 ```bash
-cd contracts  && npm test    # 28 escrow state-machine tests (TDD)
-cd agent      && npm test    # 15 verifier pipeline unit tests
+cd contracts && npx hardhat test        # 61 passing — full state machine, signature paths, fee math
+cd agent      && npm test               # 16 passing — judge gating, verdict hashing, shipment check
 cd agent      && npm run typecheck
-cd worker-app && npm run typecheck
-cd worker-app && node scripts/smoke-test.mjs   # 5-scenario e2e over real HTTP + chain:
-                                               # wrong-challenge reject, approve+payout,
-                                               # duplicate 409, second payout, history
+cd web        && npm run typecheck && npm run build
+cd web        && npm run smoke          # scripts/smoke-test.mjs — 5 e2e scenarios over real HTTP + chain:
+                                         # direct confirm, AI REFUND, AI RELEASE + seller response,
+                                         # ESCALATE -> human-resolve.ts, confirm-timeout auto-release
 ```
 
 ### BNB Smart Chain testnet
 
 ```bash
 cd contracts
-BSC_TESTNET_RPC_URL=... DEPLOYER_PRIVATE_KEY=... npx hardhat run scripts/deploy.js --network bscTestnet
+# fill .env: DEPLOYER_PRIVATE_KEY, AI_ARBITER_ADDRESS, HUMAN_ARBITER_ADDRESS, FEE_RECIPIENT, ETHERSCAN_API_KEY
+npx hardhat run scripts/deploy.js --network bscTestnet
+npx hardhat verify --network bscTestnet <escrow address> <constructor args...>
 ```
 
-Then set in both `agent/.env` and `worker-app/.env`: `CHAIN_ID=97`, `RPC_URL`, `ESCROW_ADDRESS`, `TOKEN_ADDRESS` (from `contracts/deployments/bscTestnet.json`), and `NEXT_PUBLIC_EXPLORER_URL=https://testnet.bscscan.com`.
-
-For a mainnet demo with real IDRX, verify the official IDRX contract address on BNB Chain against [IDRX documentation](https://idrx.co) first — never hardcode token addresses or assume decimals (the code reads amounts in the token's smallest unit; MockIDRX mirrors IDRX's 2 decimals).
+Then set in both `agent/.env` and `web/.env`: `CHAIN_ID=97`, `RPC_URL`, `ESCROW_ADDRESS`, `TOKEN_ADDRESS` (from `contracts/deployments/bscTestnet.json`), and in `web/.env` also `NEXT_PUBLIC_EXPLORER_URL=https://testnet.bscscan.com`.
 
 ### Environment variables
 
 | Var | Where | Purpose |
 |---|---|---|
-| `AGENT_PRIVATE_KEY` | agent | Agent wallet (posts tasks, pays bounties) |
-| `ANTHROPIC_API_KEY` | agent | Claude API (planning + vision verification) |
-| `ANTHROPIC_MODEL` / `VERIFIER_MODEL` | agent | Planning / verification models (verification may use a cheaper model) |
-| `PLANNER_PROVIDER` | agent | `anthropic` \| `aimlapi` \| `mock` — provider abstraction for planning (goal -> task list), independent of `VERIFIER_PROVIDER` |
-| `VERIFIER_PROVIDER` | agent | `anthropic` \| `openai` \| `aimlapi` \| `mock` — provider abstraction for verification |
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | agent | Only when `VERIFIER_PROVIDER=openai` (default model `gpt-4o`) |
-| `AIMLAPI_API_KEY` / `AIMLAPI_MODEL` | agent | Only when `PLANNER_PROVIDER=aimlapi` and/or `VERIFIER_PROVIDER=aimlapi` (AI/ML API — OpenAI-compatible proxy) |
-| `NEXT_PUBLIC_WORKER_URL` | worker-app | URL encoded into the `/panggung` QR (empty = LAN IP auto-detect) |
-| `MANDOR_MOCK_BRAIN` | agent | `1` = deterministic offline mode, clearly `[MOCK]`-labeled |
-| `CONFIDENCE_THRESHOLD` | agent | Min model confidence for APPROVE (default 0.8) |
-| `MAX_VERIFICATIONS_PER_TASK` | agent | Anti-spam verification cap (default 5) |
-| `RELAYER_PRIVATE_KEY` | worker-app | Pays gas so workers need no crypto |
-| `RPC_URL`, `CHAIN_ID`, `ESCROW_ADDRESS`, `TOKEN_ADDRESS` | both | Chain targeting — fully env-configurable, no hardcoded addresses |
-| `NEXT_PUBLIC_EXPLORER_URL` | worker-app | Explorer base for tx links (empty on localhost) |
-| `BSC_TESTNET_RPC_URL`, `DEPLOYER_PRIVATE_KEY` | contracts | Testnet deployment |
-| `RELAYER_ADDRESS`, `VERIFY_WINDOW`, `CLAIM_WINDOW`, `AGENT_ADDRESS` | contracts (deploy script only) | `TaskEscrow` constructor args — `VERIFY_WINDOW` default 24h (forceRelease), `CLAIM_WINDOW` default 10min (a stale Claimed task with no proof can be taken over by another worker) |
+| `AI_ARBITER_PRIVATE_KEY` | agent | Wallet that calls `resolve`/`escalate` on-chain |
+| `AI_PROVIDER` | agent, web | `mock` \| `openai` \| `aimlapi` — mock is deterministic (`[MOCK]`-labeled), never used for judged demos |
+| `AIMLAPI_API_KEY` / `AIMLAPI_MODEL` | agent, web | Real vision provider (AI/ML API, OpenAI-compatible proxy) |
+| `CONFIDENCE_THRESHOLD` | agent | Verdicts below this confidence escalate to a human instead of auto-settling (default 0.85) |
+| `SELLER_RESPONSE_SECONDS` | agent, web | How long the seller has to respond to a dispute before the AI judges without it |
+| `HUMAN_ARBITER_PRIVATE_KEY` | agent (CLI script only) | Used by `agent/scripts/human-resolve.ts`, never by the daemon |
+| `RELAYER_PRIVATE_KEY` | web | Pays gas for `fundWithSig`/`act` so users never need a funded wallet |
+| `RPC_URL`, `CHAIN_ID`, `ESCROW_ADDRESS`, `TOKEN_ADDRESS` | agent, web | Chain targeting, fully env-configurable |
+| `NEXT_PUBLIC_EXPLORER_URL` | web | Explorer base for tx links (empty on localhost) |
+| `DEPLOYER_PRIVATE_KEY`, `AI_ARBITER_ADDRESS`, `HUMAN_ARBITER_ADDRESS`, `FEE_RECIPIENT`, `ETHERSCAN_API_KEY` | contracts | Testnet/mainnet deployment + verification |
 
----
+## Known limitations (honest, on purpose)
 
-## Competitive landscape
+- **MVP payment token is Mock IDRX**, not the real IDRX stablecoin on BNB Chain. The real IDRX contract has 0 decimals but **does not support EIP-2612 `permit`** (verified directly against the mainnet contract) — a production gasless flow for real IDRX needs `approve` sponsored via a paymaster (MegaFuel) or EIP-7702, not the permit signature this demo uses.
+- **Evidence photos live on the operator's disk**, addressed by content hash. Only the hash is committed on-chain. Roadmap: IPFS/BNB Greenfield.
+- **No cash-out to rupiah yet.** On/off-ramp is a post-hackathon integration, not a prototype claim.
+- **The legal status of a non-custodial "rekber" is not settled** in Indonesian law (running a rekber is a regulated activity under UU No. 3/2011; our argument is that a non-custodial contract never holds funds the way a traditional rekber does, but there is no ruling on this). See `docs/rekber-ai/BLUEPRINT.md` §8.
+- **The AI can be wrong.** It only auto-settles when confident (≥0.85); anything ambiguous, malformed, or below threshold escalates to a human — it never guesses with money on the line.
 
-| Product | What it is | How MANDOR differs |
-|---|---|---|
-| **RentAHuman** | Marketplace where AI agents hire humans (MCP-based) | MANDOR is an **execution + proof layer**, not just matching: challenge-code evidence, layered verification, escrow with worker-protection (`forceRelease`), IDRX settlement, Indonesia-first |
-| **HUMAN Protocol** | Generic on-chain job market infrastructure (since 2021) | Not agent-native: no autonomous requester that plans, verifies, and settles without human ops |
-| **Payman** | AI-to-human payments API (Visa-backed), fiat rails | Closed fintech rails; MANDOR is on-chain escrow with contract-enforced worker recourse and public audit trail |
-| **Gig marketplaces** (Upwork/Fastwork/etc.) | Human-to-human, manual review, T+days payouts | No API for agents, no programmatic verification, no instant settlement |
+## Roadmap
 
-**Differentiation:** Indonesia-first execution network · IDRX-denominated rewards · BNB-native settlement · challenge-bound photo proof · layered anti-cheat · auditable agent decisions (JSONL + on-chain events) · provider-agnostic verifier.
-
-### ERC-8004 / ERC-8183 compatibility path
-
-[ERC-8004](https://blog.quicknode.com/erc-8004-a-developers-guide-to-trustless-ai-agent-identity/) (trustless agent identity/reputation/validation registries) and [ERC-8183](https://www.decipherclub.com/so-what-exactly-are-trustless-agents-up-to/) (agentic commerce escrow with reputation gating) are the emerging standards here; BNB Chain ships a [Python agent SDK](https://github.com/bnb-chain/bnbagent-sdk) around ERC-8004. We deliberately did **not** bolt these on for the deadline (our stack is TypeScript; a rushed integration would be buzzword-ware). The clean path, documented for production:
-
-1. Register the MANDOR agent in the ERC-8004 Identity Registry on BNB (one ERC-721 mint; agent wallet already exists).
-2. Emit worker feedback into the Reputation Registry after each settlement (data already in our audit log).
-3. Adapt `TaskEscrow` to an ERC-8183 provider flow once the standard's human-provider ergonomics stabilize — our state machine (`FUNDED → CLAIMED → SUBMITTED → VERIFIED → PAID/REJECTED`) maps 1:1.
-
----
-
-## Known limitations (prototype honesty)
-
-- **Task spec transport is a local file** (`agent/missions/current.json` read by the worker-app). Single-machine demo constraint; production path is IPFS/CID with the on-chain `specHash` as commitment (already committed on-chain today).
-- **Proof storage is the operator's disk**, addressed by hash. Production: IPFS/Pinata via the same `getProof` interface.
-- **Geofence validation is not implemented** — the schema supports location-bound tasks; browser geolocation capture is the next increment.
-- **No perceptual hashing** — duplicate detection is exact-hash; near-duplicate (re-encoded) photos rely on the challenge code + vision layer.
-- **Verifier is a single oracle** — see Trust model; multi-verifier quorum is future work.
-- **Mock mode exists** for offline dev/tests and is loudly labeled; judged demos run the real vision pipeline.
-- **Regulatory**: bounty settlement in stablecoins is not employment/wage processing; Indonesian e-money and labor regulations may apply to a production operator.
+Real IDRX + licensed on/off-ramp + PJP partnership · gas sponsorship for IDRX `approve` via MegaFuel/EIP-7702 · courier tracking API integration · appeal to a human arbiter panel · on-chain seller reputation · WhatsApp bot · evidence storage on BNB Greenfield · ERC-8004 agent identity.
 
 ## License
 
 MIT (hackathon prototype).
+
+[^1]: Databoks/Katadata, citing IASC data, 21 Oct 2025 — https://databoks.katadata.co.id/en/finance/statistics/68f74ef7e7454/online-shopping-fraud-the-most-common-scam-in-indonesia
+[^4]: Liputan6, 27 Oct 2021 — https://www.liputan6.com/hot/read/4694788/beli-hp-rp-25-juta-di-online-shop-wanita-ini-malah-dapat-kotak-berisi-batu
+[^5]: Metrotoday, 19 May 2026 — https://www.metrotoday.id/nasional/2026/05/19/modus-penipuan-jual-beli-akun-game-online-marak-kerugian-capai-triliunan-rupiah/
+[^6]: Hukumonline, 1 Aug 2022 — https://www.hukumonline.com/klinik/a/tips-jika-menjadi-korban-penipuan-rekber-lt62e7a5e9aad1a/
+[^7]: RekberPay — https://rekberpay.com/?lang=en

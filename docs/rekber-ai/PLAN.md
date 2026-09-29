@@ -322,9 +322,10 @@ Loop tiap `POLL_MS` (3000):
   Isi `.env` web/agent untuk chain 97 (user). Jalankan web + agent di satu mesin; ekspos dengan `cloudflared tunnel --url http://localhost:3001` (atau VPS terpisah milik user — **jangan** pakai container PAIO/sales). Uji dengan 2 HP sungguhan: satu transaksi sukses, satu sengketa batu bata.
   *Cek:* semua tx punya link BscScan yang bisa dibuka; `NEXT_PUBLIC_APP_URL` = URL publik.
 
-- [ ] **R-14 · README + docs submission (Inggris)**
+- [x] **R-14 · README + docs submission (Inggris)**
   README baru: satu kalimat, masalah, solusi, **"Live on BSC Testnet"** (alamat terverifikasi + 1 tx contoh per status: Funded, Shipped, Released, Disputed, Refunded/Escalated), diagram mermaid (BLUEPRINT §4–§5), trust model, cara menjalankan lokal, env vars, test, known limitations yang jujur (Mock IDRX; **IDRX asli di BSC tidak punya permit → produksi butuh gas sponsorship MegaFuel/EIP-7702**; bukti di disk server; belum ada cash-out; status hukum rekber non-custodial belum pasti; AI bisa salah → eskalasi). Semua klaim faktual hanya dari BLUEPRINT §14, dengan link sumbernya. Salin draf teks submission dari BLUEPRINT §12 ke `docs/rekber-ai/SUBMISSION.md`, diperbarui dengan link nyata.
   *Cek:* semua link di README bisa dibuka; tidak ada klaim fitur yang belum ada.
+  *Catatan:* ditulis sebelum R-13 kelar, jadi "1 tx contoh per status" masih placeholder ("added after the live 2-phone testnet run") — isi begitu R-13 selesai. `docs/rekber-ai/DECK.md` (outline 10 slide + skrip video, bagian dari R-15) juga sudah ditulis lebih awal sebagai bonus, tidak memblokir apa pun.
 
 - [ ] **R-15 · 🛑 USER — video, deck, submit**
   Bantu user: skrip video ≤ 5 menit (turunan BLUEPRINT §10 + 30 detik arsitektur/trust), outline deck 8–10 slide. **User sendiri** yang merekam, mengunggah ke YouTube, membuat repo publik (setelah scan rahasia: `git log -p --all | grep -nE 'PRIVATE_KEY=0x|AIMLAPI_API_KEY=[0-9a-f]|sk-'` harus kosong), dan mengisi form. **Simpan edit code submission.** Target submit awal **3 Okt**, final **6 Okt**.
