@@ -21,7 +21,7 @@ Team: Gedung Hijau.
 > BNB Smart Chain **Testnet** (chain id 97) — confirm the form's Network dropdown has a Testnet option before submitting; do not select Mainnet.
 
 **Logo Project**
-> ⬜ TODO — not made yet.
+> Upload [`docs/rekber-ai/logo/logo.png`](logo/logo.png) (1024×1024). Source: [`logo.svg`](logo/logo.svg) — a padlock whose face is a balance scale: the money is locked, the dispute is weighed.
 
 **Problem Statement**
 > Online shopping fraud is the #1 scam type reported to Indonesia's Anti-Scam Centre (IASC, OJK): 53,928 reports between Nov 2024 and Oct 2025, out of ~299,000 scam reports totalling Rp7 trillion in losses. Many person-to-person trades happen outside marketplaces — in Facebook groups, Instagram, WhatsApp and gaming communities — where there is no escrow. People rely on "rekber" (rekening bersama): a middleman who holds the money until the item arrives. But fake rekber is itself a documented scam, licensed rekber services still hold your money, and disputes are decided manually by an admin. Even inside marketplaces, the infamous "ordered a phone, received a brick" cases end with the shop and the courier blaming each other — because nobody collected evidence of who cheated.
@@ -45,7 +45,7 @@ Team: Gedung Hijau.
 > Optional — team's own accounts, not drafted here.
 
 **Pitch Deck — Canva/Drive**
-> ⬜ TODO — build from the slide outline in [`DECK.md`](DECK.md), then paste the share link here.
+> ⬜ TODO — 10-slide deck is built (Claude artifact "Rekber AI Pitch Deck", content from [`DECK.md`](DECK.md)). Export it to PPTX/PDF, upload to Google Drive or import into Canva, set sharing to "anyone with the link", paste that link here. The artifact link itself is private until shared.
 
 ---
 
@@ -54,4 +54,4 @@ Team: Gedung Hijau.
 1. R-12 — calibrate the AI judge on real photos (currently only tested against mock evidence)
 2. R-13 — fund `aiArbiter`/`relayer` wallets with tBNB, run web+agent live against BSC Testnet, expose publicly, test with 2 real phones → gives the **Website Project** link + real per-status testnet transactions for the README table
 3. R-14 — done (this file + `README.md`)
-4. R-15 — logo, record video, build deck from `DECK.md`, publish the repo (after secret scan), submit this form
+4. R-15 — logo ✅ and deck ✅ done; still: record video, export deck + share link, publish the repo (after secret scan), submit this form
