@@ -17,7 +17,7 @@ Rekber AI replaces the human middleman with two things a smart contract and an A
 1. **The money is locked in a BNB Chain smart contract.** Nobody — including us — can withdraw it. The relayer that pays gas on the user's behalf cannot move funds without the buyer's or seller's own signature.
 2. **An AI agent judges the evidence.** The seller must photograph the real item next to a unique deal code before shipping (not just a sealed box). If the buyer confirms, or stays silent until the window closes, funds release to the seller. If the buyer disputes, the AI arbiter compares the seller's promised spec, the packing photo and the buyer's unboxing photo, then autonomously refunds or releases on-chain — or escalates to a human when unsure. Every verdict is committed on-chain as a hash of its reasoning, so anyone can recompute it and check it against the event log.
 
-Full write-up (rules of evidence, competitor analysis, regulatory notes, sources): [`docs/rekber-ai/BLUEPRINT.md`](docs/rekber-ai/BLUEPRINT.md).
+Full write-up (rules of evidence, competitor analysis, regulatory notes, sources): [`docs/rekber-ai/BLUEPRINT.md`](https://github.com/whard2205/Rekber-ai/blob/main/docs/rekber-ai/BLUEPRINT.md).
 
 ## Live on BSC Testnet
 
@@ -26,7 +26,7 @@ Full write-up (rules of evidence, competitor analysis, regulatory notes, sources
 | `RekberEscrow` | [`0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) | Verified |
 | `MockIDRX` (test token, 0 decimals — matches real IDRX) | [`0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3`](https://testnet.bscscan.com/address/0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3#code) | Verified |
 
-Example transaction per status (Funded / Shipped / Released / Disputed / Refunded): *added after the live 2-phone testnet run — see [`docs/rekber-ai/PLAN.md`](docs/rekber-ai/PLAN.md) R-13.*
+Example transaction per status (Funded / Shipped / Released / Disputed / Refunded): *added after the live 2-phone testnet run — see [`docs/rekber-ai/PLAN.md`](https://github.com/whard2205/Rekber-ai/blob/main/docs/rekber-ai/PLAN.md) R-13.*
 
 ## Architecture
 
