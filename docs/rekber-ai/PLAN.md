@@ -284,7 +284,7 @@ Loop tiap `POLL_MS` (3000):
   `deploy.js` membaca env §3.7 (default lokal = akun hardhat #0/#1), menulis `deployments/<network>.json` `{network, chainId, escrow, token, aiArbiter, humanArbiter, feeRecipient, feeBps, windows, deployBlock, deployedAt}`. (Tidak perlu mint saat deploy — saldo demo datang dari `/api/faucet`.) `export-abi.js` → `agent/src/abi/{RekberEscrow,MockIDRX}.json` dan `web/src/abi/...`.
   *Cek:* `npm run node` + `npm run deploy:localhost` + `npm run export-abi` sukses; `localhost.json` berisi alamat baru.
 
-- [ ] **R-04 · 🛑 CHECKPOINT USER — deploy BSC testnet (sedini mungkin, target 30 Sep–1 Okt)**
+- [x] **R-04 · 🛑 CHECKPOINT USER — deploy BSC testnet (sedini mungkin, target 30 Sep–1 Okt)**
   Minta user: 3 wallet (deployer, aiArbiter, relayer) + alamat humanArbiter (wallet pribadi user), tBNB di deployer/aiArbiter/relayer, `ETHERSCAN_API_KEY` (Etherscan V2 berlaku untuk chainId 97). User mengisi `.env` sendiri. Lalu deploy, `npx hardhat verify --network bscTestnet <escrow> <constructor args…>` dan verify token. Commit `deployments/bscTestnet.json`.
   *Cek:* kedua kontrak **Verified** di testnet.bscscan.com. Alamat escrow ini **sudah cukup untuk submit awal** (form mewajibkan kontrak yang resolve di BscScan).
 

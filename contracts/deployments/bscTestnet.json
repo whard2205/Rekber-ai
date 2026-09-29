@@ -1,0 +1,17 @@
+{
+  "network": "bscTestnet",
+  "chainId": 97,
+  "escrow": "0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7",
+  "token": "0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3",
+  "aiArbiter": "0x66bba3f8dD9d775b0A7F2E665d60Dd34A8C8F65d",
+  "humanArbiter": "0x19cF0D2BBd9C3AB0f2d36557e878AAaABAA3aA26",
+  "feeRecipient": "0x19cF0D2BBd9C3AB0f2d36557e878AAaABAA3aA26",
+  "feeBps": 100,
+  "windows": {
+    "ship": 1800,
+    "confirm": 600,
+    "dispute": 1800
+  },
+  "deployBlock": 133843392,
+  "deployedAt": "2026-09-29T10:07:57.950Z"
+}
