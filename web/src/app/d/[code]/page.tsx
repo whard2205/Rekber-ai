@@ -507,7 +507,7 @@ function TxLink({ hash }: { hash: string }) {
   if (!url) return <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>{hash.slice(0, 10)}…</span>;
   return (
     <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11 }}>
-      🔗 tx
+      tx ↗
     </a>
   );
 }
@@ -556,18 +556,18 @@ function ShipCard({ dealCode, busy, onShip }: { dealCode: string; busy: boolean;
       <p className="card-title" style={{ fontSize: 14 }}>Kirim barang + bukti</p>
       <div style={{ borderColor: "var(--accent)", background: "var(--accent-bg)", padding: 12, borderRadius: 12, marginBottom: 10 }}>
         <p style={{ fontSize: 12, color: "var(--accent-ink)", margin: 0 }}>
-          🔐 Foto BARANGNYA (bukan cuma dus) berdampingan dengan kode ini tertulis di kertas:
+          Foto barangnya (bukan cuma dus) di samping kode ini, ditulis di kertas:
         </p>
-        <p style={{ fontSize: 24, fontWeight: 800, letterSpacing: "0.06em", color: "var(--accent-ink)", fontFamily: "ui-monospace, monospace", margin: "4px 0 0" }}>
+        <p style={{ fontSize: 24, fontWeight: 500, letterSpacing: "0.06em", color: "var(--accent-ink)", fontFamily: "var(--font-mono), ui-monospace, monospace", margin: "4px 0 0" }}>
           {dealCode}
         </p>
       </div>
       <label className="file-input">
-        {packing.length ? `${packing.length} foto packing dipilih` : "📷 Foto packing (wajib)"}
+        {packing.length ? `${packing.length} foto packing dipilih` : "Pilih foto packing (wajib)"}
         <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: "none" }} onChange={(e) => setPacking(Array.from(e.target.files ?? []))} />
       </label>
       <label className="file-input" style={{ marginTop: 8 }}>
-        {resi ? "1 foto resi dipilih" : "📷 Foto resi (opsional)"}
+        {resi ? "1 foto resi dipilih" : "Pilih foto resi (opsional)"}
         <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => setResi(e.target.files?.[0] ?? null)} />
       </label>
       <input
@@ -606,7 +606,7 @@ function ShippedCard({
       <p className="card-title" style={{ fontSize: 14 }}>Barang sudah dikirim</p>
       {check && (
         <div className={check.itemVisible ? "alert alert-ok" : "alert alert-fail"} style={{ marginBottom: 10 }}>
-          {check.itemVisible ? "✅ AI: barang terlihat di foto packing" : "⚠️ AI: barang tidak terlihat jelas di foto packing"}
+          {check.itemVisible ? "Cek AI: barang terlihat di foto packing" : "Cek AI: barang tidak terlihat jelas di foto packing"}
           {check.warnings.length > 0 && (
             <ul className="criteria" style={{ color: "inherit", marginTop: 6 }}>
               {check.warnings.map((w, i) => (
@@ -632,7 +632,7 @@ function ShippedCard({
             Foto unboxing dengan kode <b>{dealCode}</b> terlihat, lalu jelaskan masalahnya.
           </p>
           <label className="file-input">
-            {photos.length ? `${photos.length} foto dipilih` : "📷 Foto unboxing"}
+            {photos.length ? `${photos.length} foto dipilih` : "Pilih foto unboxing"}
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: "none" }} onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} />
           </label>
           <textarea
@@ -661,7 +661,7 @@ function RespondCard({ busy, onRespond }: { busy: boolean; onRespond: (photos: F
       <p className="card-title" style={{ fontSize: 14 }}>Tanggapi komplain pembeli</p>
       <p className="card-meta">AI akan memutus berdasarkan bukti kedua pihak.</p>
       <label className="file-input">
-        {photos.length ? `${photos.length} foto dipilih` : "📷 Foto pendukung (opsional)"}
+        {photos.length ? `${photos.length} foto dipilih` : "Pilih foto pendukung (opsional)"}
         <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: "none" }} onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} />
       </label>
       <textarea
@@ -715,7 +715,7 @@ function FinalBanner({ onchain, verdict }: { onchain: OnchainDeal; verdict: Verd
       )}
       {check && (
         <div className={check.matches ? "alert alert-ok" : "alert alert-fail"} style={{ marginTop: 8 }}>
-          {check.matches ? "✅ Cocok — putusan ini benar-benar yang tercatat di blockchain." : "❌ Tidak cocok"}
+          {check.matches ? "Cocok: putusan ini sama persis dengan yang tercatat di blockchain." : "Tidak cocok dengan hash di blockchain."}
           <p style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", wordBreak: "break-all", margin: "4px 0 0" }}>
             {check.recomputed}
           </p>

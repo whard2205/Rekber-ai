@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<number, string> = {
   [Status.Refunded]: "SELESAI — dana kembali ke pembeli",
   [Status.Split]: "SELESAI — dana dibagi 50/50",
 };
-const OUTCOME_ICON: Record<string, string> = { REFUND: "💸", RELEASE: "✅", ESCALATE: "🙋" };
+const OUTCOME_LABEL: Record<string, string> = { REFUND: "Refund", RELEASE: "Cair ke penjual", ESCALATE: "Ke arbiter manusia" };
 
 interface Spec {
   title: string;
@@ -129,7 +129,7 @@ function PanggungInner() {
     <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "var(--bg)", color: "var(--ink)", overflow: "auto", padding: "28px 40px" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 20 }}>
         <span className="brand" style={{ fontSize: 34 }}>
-          <span className="brand-mark" style={{ width: 42, height: 42, fontSize: 22 }}>⚖️</span>
+          <img src="/logo.svg" alt="" className="brand-mark" style={{ width: 42, height: 42 }} />
           Rekber AI
         </span>
         <span style={{ color: "var(--ink-soft)", fontSize: 18 }}>escrow non-custodial — AI hakim sengketa</span>
@@ -148,7 +148,7 @@ function PanggungInner() {
             <div className="card" style={{ textAlign: "center" }}>
               <p className="card-title" style={{ fontSize: 20 }}>Scan buat coba</p>
               {qr && <img src={qr} alt="QR deal demo" style={{ width: "100%", maxWidth: 280, margin: "10px auto", display: "block" }} />}
-              {data.spotlight && <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 16 }}>{data.spotlight.deal.dealCode}</p>}
+              {data.spotlight && <p className="mono" style={{ fontSize: 16 }}>{data.spotlight.deal.dealCode}</p>}
             </div>
             {data.recent.length > 0 && (
               <div className="card">
@@ -203,7 +203,7 @@ function SpotlightCard({ s }: { s: Spotlight }) {
       {s.verdict?.commit && s.verdict.commit.outcome !== "ESCALATE" && (
         <div style={{ marginTop: 14, fontSize: 15 }}>
           <p style={{ fontWeight: 700 }}>
-            {OUTCOME_ICON[s.verdict.commit.outcome]} {s.verdict.commit.outcome} · confidence {(s.verdict.commit.confidence * 100).toFixed(0)}%
+            <span className={`tag tag-${s.verdict.commit.outcome.toLowerCase()}`}>{OUTCOME_LABEL[s.verdict.commit.outcome]}</span> · confidence {(s.verdict.commit.confidence * 100).toFixed(0)}%
           </p>
           <ul className="criteria">
             {s.verdict.commit.reasons.map((r, i) => <li key={i}>{r}</li>)}
@@ -222,7 +222,7 @@ function DecisionFeed({ entries }: { entries: AuditEntry[] }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
         {entries.map((e, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-            <span>{OUTCOME_ICON[e.outcome]} {e.dealCode} — {e.outcome}</span>
+            <span><span className="mono">{e.dealCode}</span> · <span className={`tag tag-${e.outcome.toLowerCase()}`}>{OUTCOME_LABEL[e.outcome]}</span></span>
             <span style={{ color: "var(--ink-soft)" }}>{new Date(e.ts).toLocaleTimeString("id-ID")}</span>
           </div>
         ))}

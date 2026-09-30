@@ -1,53 +1,81 @@
 import Link from "next/link";
 import { listDeals } from "@/lib/deals";
-import { rupiah } from "@/lib/format";
+import { explorerAddressUrl, rupiah, shortAddress } from "@/lib/format";
 
-/** Halaman utama (docs/rekber-ai/PLAN.md §3.6 "/"): hero satu kalimat, 3 langkah, tombol
- * "Mulai Jualan", daftar transaksi dari localStorage dibuat di R-09 (butuh peran pembeli). */
+/** Halaman utama (docs/rekber-ai/PLAN.md §3.6 "/"): klaim satu kalimat, cara kerja, fakta yang
+ * bisa dicek (alamat kontrak, fee, ambang AI), lalu transaksi terbaru. */
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const deals = listDeals().filter((d) => d.spec.listingPhotos.length > 0).slice(0, 5);
+  const escrow = process.env.NEXT_PUBLIC_ESCROW_ADDRESS;
+  const escrowUrl = escrow ? explorerAddressUrl(escrow) : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="card" style={{ textAlign: "center", padding: 28 }}>
-        <h1 className="card-title" style={{ fontSize: 24 }}>
-          Bayar aman jual-beli online
-        </h1>
-        <p className="card-meta" style={{ marginTop: 6 }}>
-          Dana dikunci di kontrak pintar BSC. AI memeriksa bukti dan memutus sengketa —
-          penjual tidak bisa lari, pembeli tidak bisa pura-pura barang rusak.
+    <div>
+      <section className="hero">
+        <h1>Rekber tanpa admin.</h1>
+        <p>
+          Uang pembeli dikunci di smart contract, bukan di rekening orang. Kalau ada komplain, AI membandingkan
+          janji penjual, foto packing, dan foto unboxing, lalu memutus. Kami sendiri tidak bisa menyentuh uangnya.
         </p>
-        <Link className="btn" href="/jual" style={{ textDecoration: "none" }}>
-          Mulai Jualan
+        <Link className="btn" href="/jual">
+          Mulai jualan
         </Link>
-      </div>
+      </section>
 
-      <div className="card">
-        <h2 className="card-title">3 langkah</h2>
-        <ol className="criteria">
-          <li>Penjual upload foto + AI bantu tulis janji (spec) barang</li>
-          <li>Pembeli bayar — dana dikunci, tidak ada yang bisa ambil</li>
-          <li>Penjual kirim + bukti foto; pembeli konfirmasi → dana cair. Sengketa? AI hakim</li>
-        </ol>
-      </div>
+      <p className="section-label">Cara kerja</p>
+      <ol className="steps">
+        <li>
+          Penjual posting barang
+          <span>Foto + deskripsi. AI menyusun daftar janji (spec) yang ditandatangani penjual.</span>
+        </li>
+        <li>
+          Pembeli bayar
+          <span>Uang masuk kontrak. Tanpa install wallet, tanpa bayar gas.</span>
+        </li>
+        <li>
+          Penjual kirim dengan bukti
+          <span>Foto barangnya sendiri di samping kode transaksi, bukan cuma dus.</span>
+        </li>
+        <li>
+          Pembeli konfirmasi, atau komplain
+          <span>Konfirmasi: uang cair ke penjual. Komplain: AI memutus refund atau cair, atau menyerahkan ke manusia kalau ragu.</span>
+        </li>
+      </ol>
+
+      <p className="section-label">Yang bisa kamu cek sendiri</p>
+      <dl className="facts">
+        <dt>Kontrak</dt>
+        <dd>
+          {escrow && escrowUrl ? (
+            <a className="mono" href={escrowUrl} target="_blank" rel="noreferrer">
+              {shortAddress(escrow)} ↗
+            </a>
+          ) : (
+            "RekberEscrow di BNB Smart Chain"
+          )}{" "}
+          · terverifikasi di BscScan
+        </dd>
+        <dt>Fee</dt>
+        <dd>1%, hanya saat uang cair ke penjual. Refund gratis.</dd>
+        <dt>AI</dt>
+        <dd>Hanya memutus kalau yakin ≥ 85%. Di bawah itu, arbiter manusia yang memutus.</dd>
+        <dt>Server mati?</dt>
+        <dd>Tidak dikirim = refund, pembeli diam = cair, sengketa kedaluwarsa = bagi 50/50. Uang tidak pernah nyangkut.</dd>
+      </dl>
 
       {deals.length > 0 && (
-        <div className="card">
-          <h2 className="card-title">Transaksi terbaru</h2>
+        <>
+          <p className="section-label">Transaksi terbaru</p>
           {deals.map((d) => (
-            <Link
-              key={d.dealCode}
-              href={`/d/${d.dealCode}`}
-              style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: "1px solid var(--border)", textDecoration: "none" }}
-            >
-              <span style={{ fontWeight: 600 }}>{d.spec.title}</span>
+            <Link key={d.dealCode} href={`/d/${d.dealCode}`} className="row-link">
+              <span style={{ fontWeight: 500 }}>{d.spec.title}</span>
               <span className="bounty">{rupiah(d.spec.priceIDRX)}</span>
             </Link>
           ))}
-        </div>
+        </>
       )}
     </div>
   );

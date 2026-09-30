@@ -1,25 +1,30 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Libre_Baskerville } from "next/font/google";
 import "./globals.css";
 
+const serif = Libre_Baskerville({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-serif" });
+const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
+
 export const metadata: Metadata = {
-  title: "Rekber AI — Escrow non-custodial dengan AI sebagai hakim",
-  description: "Bayar aman jual-beli online: dana dikunci di kontrak, AI memutus sengketa.",
+  title: "Rekber AI — rekber tanpa admin",
+  description: "Uang dikunci di smart contract, sengketa diputus AI. Tidak ada admin yang bisa kabur membawa uangmu.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ff6a3d",
+  themeColor: "#14202e",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id">
+    <html lang="id" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body>
         <header className="header">
           <Link href="/" className="brand">
-            <span className="brand-mark">⚖️</span>
+            <img src="/logo.svg" alt="" className="brand-mark" />
             Rekber AI
           </Link>
           <nav className="nav">
