@@ -123,7 +123,7 @@ Then set in both `agent/.env` and `web/.env`: `CHAIN_ID=97`, `RPC_URL`, `ESCROW_
 ## Known limitations (honest, on purpose)
 
 - **MVP payment token is Mock IDRX**, not the real IDRX stablecoin on BNB Chain. The real IDRX contract has 0 decimals but **does not support EIP-2612 `permit`** (verified directly against the mainnet contract) — a production gasless flow for real IDRX needs `approve` sponsored via a paymaster (MegaFuel) or EIP-7702, not the permit signature this demo uses.
-- **Evidence photos live on the operator's disk**, addressed by content hash. Only the hash is committed on-chain. Roadmap: IPFS/BNB Greenfield.
+- **Evidence photos live in the operator's storage** (Upstash Redis in the deployed app, `data/` files locally), addressed by content hash. Only the hash is committed on-chain. Roadmap: IPFS/BNB Greenfield.
 - **No cash-out to rupiah yet.** On/off-ramp is a post-hackathon integration, not a prototype claim.
 - **The legal status of a non-custodial "rekber" is not settled** in Indonesian law (running a rekber is a regulated activity under UU No. 3/2011; our argument is that a non-custodial contract never holds funds the way a traditional rekber does, but there is no ruling on this). See `docs/rekber-ai/BLUEPRINT.md` §8.
 - **The AI can be wrong.** It only auto-settles when confident (≥0.85); anything ambiguous, malformed, or below threshold escalates to a human — it never guesses with money on the line.

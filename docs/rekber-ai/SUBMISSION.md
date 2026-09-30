@@ -30,8 +30,7 @@ Team: Gedung Hijau.
 > Rekber AI replaces the human middleman. The buyer's payment is locked in a BNB Chain smart contract that nobody — including us — can withdraw from. The seller must photograph the actual item next to a unique deal code before shipping. If the buyer is satisfied (or stays silent until the window closes), funds release to the seller. If not, an AI arbiter agent compares the seller's promised spec, the packing photo and the buyer's unboxing photo, then autonomously refunds or releases on-chain — or escalates to a human when unsure. Every verdict is committed on-chain as a hash of its reasoning. Users need no wallet setup and pay no gas.
 
 **Project Detail (markdown, supports Mermaid)**
-> Paste the full contents of [`README.md`](../../README.md) — it already has the one-sentence pitch, problem, solution, live testnet addresses, architecture diagrams (state machine + trust flow), trust model table, "why blockchain / why AI", how to run, tests, env vars, and honest known limitations. Don't duplicate it here by hand; copy the file verbatim so it can't drift out of sync.
-> Before pasting: check the form's PREVIEW tab — the 3 diagrams are SVGs in `docs/rekber-ai/diagrams/`, linked by absolute raw.githubusercontent URLs so they load outside GitHub too; footnotes (`[^1]`) may show as plain text if the form's renderer doesn't support them.
+> Paste [`PROJECT_DETAIL.md`](PROJECT_DETAIL.md) — a judge-facing cut of the README (no install steps or env tables; footnotes turned into inline links). Check the form's PREVIEW tab: the 3 diagrams are SVGs loaded from raw.githubusercontent.com. If they don't show, upload `docs/rekber-ai/diagrams/*.svg` with the form's IMAGE button instead.
 
 **GitHub Repo (public)**
 > https://github.com/whard2205/Rekber-ai
