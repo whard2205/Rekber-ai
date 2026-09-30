@@ -11,12 +11,12 @@ export async function POST() {
   // Cek 100 kali kalau-kalau kebetulan nabrak kode yang sudah ada (probabiliti ~0).
   for (let i = 0; i < 100; i++) {
     const dealCode = generateDealCode();
-    if (dealExists(dealCode)) continue;
+    if (await dealExists(dealCode)) continue;
     const dealId = dealIdFor(dealCode);
     const err = badBytes32(dealId);
     if (err) return NextResponse.json({ error: err }, { status: 400 });
 
-    writeDeal({
+    await writeDeal({
       dealCode,
       dealId,
       createdAt: new Date().toISOString(),

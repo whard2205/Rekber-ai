@@ -8,7 +8,7 @@ import {
   type Spec,
 } from "@/lib/deals";
 import { badAddress, badBytes32, badOfferPayload, badSpec, badSpecMatch, asAddress, asHex } from "@/lib/validation";
-import { evidenceExists } from "@/lib/evidence";
+import { missingEvidence } from "@/lib/evidence";
 import { verifyOffer } from "@/lib/verify";
 import { getDeal, getWindows } from "@/lib/chain";
 import { readVerdict } from "@/lib/verdicts";
@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   if (matchErr) return NextResponse.json({ error: matchErr }, { status: 400 });
 
   // 1. Bukti foto harus benar-benar ada di server (nama = hash isi file, file ada)
-  const missing = specTyped.listingPhotos.filter((p) => !evidenceExists(p));
+  const missing = await missingEvidence(specTyped.listingPhotos as string[]);
   if (missing.length > 0) {
     return NextResponse.json(
       { error: `Foto bukti belum di-upload atau tidak valid: ${missing.join(", ")}` },
@@ -88,7 +88,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   }
 
   // 4. Kode sudah dipublikasi/bayar → tolak publish ulang (deal file = satu penulis)
-  const existing = readDeal(code);
+  const existing = await readDeal(code);
   if (existing && (existing.txs.fund || existing.spec.listingPhotos.length > 0)) {
     return NextResponse.json(
       { error: existing.txs.fund ? "Transaksi sudah dibayar — tidak bisa publish ulang" : "Janji penjual sudah dipublikasi untuk kode ini" },
@@ -106,7 +106,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     offer: { deadline: offer.deadline, sig: offer.sig },
     txs: existing?.txs ?? {},
   };
-  writeDeal(record);
+  await writeDeal(record);
 
   return NextResponse.json({ dealCode: code, dealId: record.dealId, specHash });
 }
@@ -114,7 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
 /** GET /api/deals/[code] — deal file + state on-chain + verdict + jendela waktu (§3.6). */
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const deal = readDeal(code);
+  const deal = await readDeal(code);
   if (!deal) return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
 
   const [onchain, windows] = await Promise.all([
@@ -134,7 +134,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
       disputedAt: onchain.disputedAt,
       verdictHash: onchain.verdictHash,
     },
-    verdict: readVerdict(code),
+    verdict: await readVerdict(code),
     windows: { ...windows, sellerResponseSeconds: config.sellerResponseSeconds },
   });
 }

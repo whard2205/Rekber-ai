@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDeal, writeDeal, computeShipmentHash } from "@/lib/deals";
 import { badAddress, badDeadline, asAddress, asHex } from "@/lib/validation";
-import { evidenceExists } from "@/lib/evidence";
+import { missingEvidence } from "@/lib/evidence";
 import { verifyAct } from "@/lib/verify";
 import { act, translateChainError } from "@/lib/chain";
 import { Action } from "@/lib/eip712";
@@ -21,7 +21,7 @@ interface ShipBody {
  * §3.6). Foto sudah diupload lewat /api/evidence sebelumnya; di sini cuma referensinya. */
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const deal = readDeal(code);
+  const deal = await readDeal(code);
   if (!deal || !deal.spec.listingPhotos.length) {
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
   }
@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     return NextResponse.json({ error: "Hanya penjual transaksi ini yang bisa mengirim bukti" }, { status: 403 });
   }
 
-  const missing = [...packingPhotos, ...(resiPhoto ? [resiPhoto] : [])].filter((p) => !evidenceExists(p as string));
+  const missing = await missingEvidence([...packingPhotos, ...(resiPhoto ? [resiPhoto] : [])] as string[]);
   if (missing.length > 0) {
     return NextResponse.json({ error: `Bukti belum di-upload atau tidak valid: ${missing.join(", ")}` }, { status: 400 });
   }
@@ -86,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
       submittedAt: new Date().toISOString(),
     };
     deal.txs.ship = receipt.transactionHash;
-    writeDeal(deal);
+    await writeDeal(deal);
     return NextResponse.json({ txHash: receipt.transactionHash });
   } catch (err) {
     return NextResponse.json({ error: translateChainError(err) }, { status: 400 });

@@ -21,6 +21,8 @@ Full write-up (rules of evidence, competitor analysis, regulatory notes, sources
 
 ## Live on BSC Testnet
 
+Web app: **https://rekber-ai.vercel.app** (Vercel, data in Upstash Redis). The AI arbiter agent is a long-running daemon, so it runs separately (`cd agent && npm start`) against the same Redis — see `KV_REST_API_URL` in `.env.example`.
+
 | Contract | Address | Status |
 |---|---|---|
 | `RekberEscrow` | [`0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) | Verified |

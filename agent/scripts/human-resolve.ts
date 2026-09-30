@@ -15,9 +15,9 @@ import { fileURLToPath } from "node:url";
 import { createPublicClient, createWalletClient, http, defineChain, keccak256, toHex, type Abi, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
+import { appendAuditLog, readDeal, readVerdict, writeVerdict } from "../src/store.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.resolve(here, "..", process.env.DATA_DIR || "../data");
 const escrowAbi: Abi = JSON.parse(fs.readFileSync(path.join(here, "..", "src", "abi", "RekberEscrow.json"), "utf8"));
 
 const KNOWN_CHAINS: Record<number, typeof hardhat> = {
@@ -61,9 +61,8 @@ async function main() {
   const privateKey = process.env.HUMAN_ARBITER_PRIVATE_KEY as `0x${string}` | undefined;
   if (!privateKey) throw new Error("HUMAN_ARBITER_PRIVATE_KEY wajib diisi (lihat .env.example)");
 
-  const dealPath = path.join(dataDir, "deals", `${dealCode}.json`);
-  if (!fs.existsSync(dealPath)) throw new Error(`Deal ${dealCode} tidak ditemukan di ${dealPath}`);
-  const deal = JSON.parse(fs.readFileSync(dealPath, "utf8"));
+  const deal = await readDeal(dealCode);
+  if (!deal) throw new Error(`Deal ${dealCode} tidak ditemukan`);
 
   const chainId = Number(process.env.CHAIN_ID || 31337);
   const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
@@ -101,31 +100,22 @@ async function main() {
     address: escrow,
     abi: escrowAbi,
     functionName: "resolve",
-    args: [deal.dealId, outcome === "REFUND", verdictHash],
+    args: [deal.dealId as Hex, outcome === "REFUND", verdictHash],
   });
   const hash = await walletClient.writeContract(request);
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-  const verdictPath = path.join(dataDir, "verdicts", `${dealCode}.json`);
-  const existing = fs.existsSync(verdictPath) ? JSON.parse(fs.readFileSync(verdictPath, "utf8")) : {};
-  fs.mkdirSync(path.dirname(verdictPath), { recursive: true });
-  fs.writeFileSync(
-    verdictPath,
-    JSON.stringify({ ...existing, commit, verdictHash, txHash: receipt.transactionHash }, null, 2),
-  );
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.appendFileSync(
-    path.join(dataDir, "audit-log.jsonl"),
-    JSON.stringify({
-      ts: new Date().toISOString(),
-      dealCode,
-      dealId: deal.dealId,
-      outcome,
-      verdictHash,
-      txHash: receipt.transactionHash,
-      commit,
-    }) + "\n",
-  );
+  const existing = ((await readVerdict(dealCode)) as Record<string, unknown> | null) ?? {};
+  await writeVerdict(dealCode, { ...existing, commit, verdictHash, txHash: receipt.transactionHash });
+  await appendAuditLog({
+    ts: new Date().toISOString(),
+    dealCode,
+    dealId: deal.dealId,
+    outcome,
+    verdictHash,
+    txHash: receipt.transactionHash,
+    commit,
+  });
 
   console.log(`✅ Selesai — tx ${receipt.transactionHash}`);
 }

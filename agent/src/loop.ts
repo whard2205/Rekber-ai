@@ -2,15 +2,15 @@
  * begitu Shipped, putus sengketa begitu Disputed + tanggapan penjual ada/lewat batas waktu.
  * Tiap deal diproses dalam try/catch sendiri (pelajaran MANDOR O-04) — satu deal error tidak
  * menghentikan daemon. */
-import path from "node:path";
 import type { Hex } from "viem";
 import { config } from "./config.js";
+import { kvEnabled } from "./kv.js";
 import { account, escalate, getDeal, resolve, Status, type OnchainDeal } from "./chain.js";
 import { createAiProvider, type AiProvider } from "./ai.js";
 import { checkShipment, type ShipmentCheck } from "./shipment.js";
 import { judgeDispute, buildEscalateVerdict, type JudgeCommit, type JudgeOutcome, type RawJudgeOutput } from "./judge.js";
-import { listDeals, loadEvidenceImage, writeVerdict, readVerdict, appendAuditLog } from "./store.js";
-import { PhotoRegistry } from "./registry.js";
+import { listDeals, loadEvidenceImage, writeVerdict, readVerdict, appendAuditLog, openPhotoRegistry } from "./store.js";
+import type { PhotoRegistry } from "./registry.js";
 import type { DealRecord, ImageInput } from "./types.js";
 
 const MAX_API_RETRIES = 3;
@@ -24,8 +24,8 @@ interface VerdictFile {
   raw?: RawJudgeOutput | null;
 }
 
-function readVerdictFile(dealCode: string): VerdictFile {
-  return (readVerdict(dealCode) as VerdictFile | null) ?? {};
+async function readVerdictFile(dealCode: string): Promise<VerdictFile> {
+  return ((await readVerdict(dealCode)) as VerdictFile | null) ?? {};
 }
 
 interface ImageSection {
@@ -35,13 +35,13 @@ interface ImageSection {
 
 /** Nomori & beri label tiap foto sebelum dikirim ke model vision — supaya model tahu peran
  * tiap foto ("Foto 3 — packing dari penjual"), bukan sekadar tumpukan gambar tanpa konteks. */
-function buildImages(sections: ImageSection[]): ImageInput[] {
+async function buildImages(sections: ImageSection[]): Promise<ImageInput[]> {
   const images: ImageInput[] = [];
   let n = 1;
   for (const section of sections) {
     for (const filename of section.photos) {
       if (!filename) continue;
-      const img = loadEvidenceImage(filename, `Foto ${n} — ${section.label}`);
+      const img = await loadEvidenceImage(filename, `Foto ${n} — ${section.label}`);
       if (img) {
         images.push(img);
         n++;
@@ -51,7 +51,7 @@ function buildImages(sections: ImageSection[]): ImageInput[] {
   return images;
 }
 
-function shipmentImages(deal: DealRecord): ImageInput[] {
+function shipmentImages(deal: DealRecord): Promise<ImageInput[]> {
   return buildImages([
     { photos: deal.spec.listingPhotos, label: "listing dari penjual" },
     { photos: deal.shipment?.packingPhotos ?? [], label: "packing dari penjual (bukti kirim)" },
@@ -59,7 +59,7 @@ function shipmentImages(deal: DealRecord): ImageInput[] {
   ]);
 }
 
-function judgeImages(deal: DealRecord): ImageInput[] {
+function judgeImages(deal: DealRecord): Promise<ImageInput[]> {
   return buildImages([
     { photos: deal.spec.listingPhotos, label: "listing dari penjual" },
     { photos: deal.shipment?.packingPhotos ?? [], label: "packing dari penjual (bukti kirim)" },
@@ -70,11 +70,11 @@ function judgeImages(deal: DealRecord): ImageInput[] {
 }
 
 async function maybeCheckShipment(deal: DealRecord, provider: AiProvider | null): Promise<void> {
-  const existing = readVerdictFile(deal.dealCode);
+  const existing = await readVerdictFile(deal.dealCode);
   if (existing.shipmentCheck) return; // sudah pernah dicek — off-chain, sekali cukup
 
-  const check = await checkShipment(deal, shipmentImages(deal), provider);
-  writeVerdict(deal.dealCode, { ...existing, shipmentCheck: check });
+  const check = await checkShipment(deal, await shipmentImages(deal), provider);
+  await writeVerdict(deal.dealCode, { ...existing, shipmentCheck: check });
   const flag = check.itemVisible ? "barang terlihat" : "⚠️ barang TIDAK terlihat di foto packing";
   console.log(`   📦 ${deal.dealCode}: cek pengiriman — ${flag}${check.warnings.length ? " — " + check.warnings.join("; ") : ""}`);
 }
@@ -85,8 +85,8 @@ async function submitVerdict(deal: DealRecord, verdictHash: Hex, outcome: JudgeO
   const receipt = outcome === "ESCALATE" ? await escalate(dealId, verdictHash) : await resolve(dealId, outcome === "REFUND", verdictHash);
   const txHash = receipt.transactionHash;
 
-  writeVerdict(deal.dealCode, { ...readVerdictFile(deal.dealCode), txHash });
-  appendAuditLog({ ts: new Date().toISOString(), dealCode: deal.dealCode, dealId, outcome, verdictHash, txHash, commit });
+  await writeVerdict(deal.dealCode, { ...(await readVerdictFile(deal.dealCode)), txHash });
+  await appendAuditLog({ ts: new Date().toISOString(), dealCode: deal.dealCode, dealId, outcome, verdictHash, txHash, commit });
 
   const icon = outcome === "REFUND" ? "💸" : outcome === "RELEASE" ? "✅" : "🙋";
   console.log(`   ${icon} ${deal.dealCode}: ${outcome}${outcome !== "ESCALATE" ? ` (${commit.confidence.toFixed(2)})` : ""} — ${commit.reasons.join("; ")}`);
@@ -99,7 +99,7 @@ async function maybeJudge(
   provider: AiProvider | null,
   registry: PhotoRegistry,
 ): Promise<void> {
-  const existing = readVerdictFile(deal.dealCode);
+  const existing = await readVerdictFile(deal.dealCode);
 
   if (existing.verdictHash && existing.txHash) return; // sudah selesai sepenuhnya
 
@@ -115,14 +115,14 @@ async function maybeJudge(
   const windowElapsed = Math.floor(Date.now() / 1000) >= onchain.disputedAt + config.sellerResponseSeconds;
   if (!responded && !windowElapsed) return; // masih menunggu tanggapan penjual
 
-  const verdict = await judgeDispute(deal, judgeImages(deal), {
+  const verdict = await judgeDispute(deal, await judgeImages(deal), {
     provider,
     confidenceThreshold: config.confidenceThreshold,
     registry,
     buyerPhotoFilenames: deal.dispute?.photos ?? [],
   });
 
-  writeVerdict(deal.dealCode, { ...existing, commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
+  await writeVerdict(deal.dealCode, { ...existing, commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
   await submitVerdict(deal, verdict.verdictHash, verdict.outcome, verdict.commit);
 }
 
@@ -151,7 +151,7 @@ async function forceEscalate(deal: DealRecord, provider: AiProvider | null, atte
   const verdict = buildEscalateVerdict(deal, modelName, [
     `Verifikasi AI gagal ${attempts}x berturut-turut (error jaringan/API) — dilempar ke arbiter manusia`,
   ]);
-  writeVerdict(deal.dealCode, { ...readVerdictFile(deal.dealCode), commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
+  await writeVerdict(deal.dealCode, { ...(await readVerdictFile(deal.dealCode)), commit: verdict.commit, verdictHash: verdict.verdictHash, raw: verdict.raw });
   await submitVerdict(deal, verdict.verdictHash, "ESCALATE", verdict.commit);
 }
 
@@ -159,9 +159,9 @@ export async function runDaemon(): Promise<void> {
   console.log(`\n⚖️  Rekber AI arbiter mulai jalan.\n   Wallet AI arbiter: ${account.address}`);
   const provider = createAiProvider(config);
   console.log(`   Provider: ${provider?.name ?? "mock"} (ambang confidence ${config.confidenceThreshold})`);
-  console.log(`   Polling tiap ${config.pollMs / 1000}s dari ${config.dataDir}\n`);
+  console.log(`   Polling tiap ${config.pollMs / 1000}s dari ${kvEnabled() ? "Upstash Redis" : config.dataDir}\n`);
 
-  const registry = new PhotoRegistry(path.join(config.dataDir, "photo-registry.json"));
+  const registry = openPhotoRegistry();
   const apiRetries = new Map<string, number>();
   // Deal yang sudah final (Released/Refunded/Split — lewat agent ATAU lewat siapa pun yang
   // memicu refundUnshipped/releaseUnconfirmed/splitStale, §3.2) tidak pernah balik ke status
@@ -173,7 +173,7 @@ export async function runDaemon(): Promise<void> {
 
   for (;;) {
     await sleep(config.pollMs);
-    const deals = listDeals().filter((d) => !!d.txs.fund && !finalized.has(d.dealCode));
+    const deals = (await listDeals()).filter((d) => !!d.txs.fund && !finalized.has(d.dealCode));
 
     for (const deal of deals) {
       try {

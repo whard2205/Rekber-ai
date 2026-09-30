@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { EVIDENCE_NAME_RE, evidencePath } from "@/lib/evidence";
+import { EVIDENCE_NAME_RE, readEvidence } from "@/lib/evidence";
 
 /** GET /api/evidence/[name] — sajikan file bukti (nama = hash isi, jadi nama sudah
  * memvalidasi integritas; R-09 memakai ini untuk thumbnail di /d/[code] dan /panggung). */
@@ -20,11 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
   const mime = ext ? MIME_BY_EXT[ext] : undefined;
   if (!mime) return new NextResponse("Format tidak didukung", { status: 400 });
 
-  let bytes: Buffer;
-  try {
-    bytes = await import("node:fs/promises").then((fs) => fs.readFile(evidencePath(name)));
-  } catch {
-    return new NextResponse("Bukti tidak ditemukan", { status: 404 });
-  }
-  return new NextResponse(bytes, { headers: { "Content-Type": mime, "Cache-Control": "public, max-age=3600" } });
+  const bytes = await readEvidence(name);
+  if (!bytes) return new NextResponse("Bukti tidak ditemukan", { status: 404 });
+  return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": mime, "Cache-Control": "public, max-age=31536000, immutable" } });
 }

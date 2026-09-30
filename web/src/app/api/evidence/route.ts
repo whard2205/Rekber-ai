@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import path from "node:path";
 import { keccak256 } from "viem";
-import { evidencePath, extForMime, validateEvidenceBlob } from "@/lib/evidence";
+import { extForMime, saveEvidence, validateEvidenceBlob } from "@/lib/evidence";
 
 export const dynamic = "force-dynamic";
 
@@ -31,15 +30,10 @@ export async function POST(req: Request) {
     if (!ext) return NextResponse.json({ error: `${file.name}: format tidak didukung` }, { status: 400 });
     const name = `${hash.slice(2)}.${ext}`;
     // Dedup: nama menentukan isi, menulis ulang isi yang sama = no-op.
-    await fsWrite(evidencePath(name), bytes);
+    await saveEvidence(name, bytes);
     saved.push(name);
   }
 
   return NextResponse.json({ files: saved });
 }
 
-async function fsWrite(p: string, bytes: Uint8Array): Promise<void> {
-  const { mkdir, writeFile } = await import("node:fs/promises");
-  await mkdir(path.dirname(p), { recursive: true });
-  await writeFile(p, bytes);
-}

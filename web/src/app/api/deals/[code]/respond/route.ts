@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDeal, writeDeal, computeResponseHash } from "@/lib/deals";
 import { asAddress, asHex } from "@/lib/validation";
-import { evidenceExists } from "@/lib/evidence";
+import { missingEvidence } from "@/lib/evidence";
 import { verifySellerResponse } from "@/lib/verify";
 import { readVerdict } from "@/lib/verdicts";
 import { getDeal, Status } from "@/lib/chain";
@@ -24,7 +24,7 @@ const MAX_TEXT = 2000;
  * agent (R-06) memutus, tanggapan telat tidak lagi diterima. */
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const deal = readDeal(code);
+  const deal = await readDeal(code);
   if (!deal || !deal.spec.listingPhotos.length) {
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
   }
@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   if (onchain.status !== Status.Disputed) {
     return NextResponse.json({ error: "Sengketa sudah tidak dalam status yang bisa ditanggapi" }, { status: 409 });
   }
-  const verdict = readVerdict(code) as { commit?: unknown } | null;
+  const verdict = await readVerdict(code) as { commit?: unknown } | null;
   if (verdict?.commit) {
     return NextResponse.json({ error: "AI/arbiter sudah memutus — tanggapan tidak bisa dikirim lagi" }, { status: 409 });
   }
@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     return NextResponse.json({ error: "Format tanda tangan tidak valid" }, { status: 400 });
   }
 
-  const missing = (photos as string[]).filter((p) => !evidenceExists(p));
+  const missing = await missingEvidence(photos as string[]);
   if (missing.length > 0) {
     return NextResponse.json({ error: `Bukti belum di-upload atau tidak valid: ${missing.join(", ")}` }, { status: 400 });
   }
@@ -77,6 +77,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     responseHash,
     respondedAt: new Date().toISOString(),
   };
-  writeDeal(deal);
+  await writeDeal(deal);
   return NextResponse.json({ ok: true });
 }

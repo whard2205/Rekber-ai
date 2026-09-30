@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
 import { listDeals } from "@/lib/deals";
 import { getDeal, getWindows, Status } from "@/lib/chain";
-import { readVerdict } from "@/lib/verdicts";
+import { readAuditLogTail, readVerdict } from "@/lib/verdicts";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +16,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const requested = url.searchParams.get("deal");
 
-  const deals = listDeals();
+  const deals = await listDeals();
   const withOnchain = await Promise.all(
     deals.slice(0, 20).map(async (d) => ({ deal: d, onchain: d.txs.fund ? await getDeal(d.dealId as `0x${string}`) : null })),
   );
@@ -46,20 +44,11 @@ export async function GET(req: Request) {
         disputedAt: spotlight.onchain.disputedAt,
         verdictHash: spotlight.onchain.verdictHash,
       },
-      verdict: readVerdict(spotlight.deal.dealCode),
+      verdict: await readVerdict(spotlight.deal.dealCode),
       windows: { ...windows, sellerResponseSeconds: config.sellerResponseSeconds },
     },
     recent: deals.slice(0, 8).map((d) => ({ dealCode: d.dealCode, title: d.spec.title, priceIDRX: d.spec.priceIDRX, listingPhoto: d.spec.listingPhotos[0] ?? null })),
-    auditLog: readAuditLogTail(12),
+    auditLog: await readAuditLogTail(12),
   });
 }
 
-function readAuditLogTail(n: number): unknown[] {
-  const p = path.join(config.dataDir, "audit-log.jsonl");
-  if (!fs.existsSync(p)) return [];
-  const lines = fs.readFileSync(p, "utf8").trim().split("\n").filter(Boolean);
-  return lines
-    .slice(-n)
-    .reverse()
-    .map((l) => JSON.parse(l));
-}

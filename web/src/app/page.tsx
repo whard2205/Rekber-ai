@@ -8,7 +8,7 @@ import { explorerAddressUrl, rupiah, shortAddress } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const deals = listDeals().filter((d) => d.spec.listingPhotos.length > 0).slice(0, 5);
+  const deals = (await listDeals()).filter((d) => d.spec.listingPhotos.length > 0).slice(0, 5);
   const escrow = process.env.NEXT_PUBLIC_ESCROW_ADDRESS;
   const escrowUrl = escrow ? explorerAddressUrl(escrow) : null;
 

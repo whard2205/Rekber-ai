@@ -43,5 +43,3 @@ if (!config.escrowAddress || !config.tokenAddress) {
   throw new Error("ESCROW_ADDRESS/TOKEN_ADDRESS belum diset dan deployments/localhost.json tidak ditemukan");
 }
 
-fs.mkdirSync(path.join(config.dataDir, "deals"), { recursive: true });
-fs.mkdirSync(path.join(config.dataDir, "evidence"), { recursive: true });

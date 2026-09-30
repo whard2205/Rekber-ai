@@ -200,9 +200,11 @@ export async function judgeDispute(deal: DealRecord, images: ImageInput[], opts:
   const modelName = opts.provider?.name ?? "mock";
 
   // Lapis 1 — deteksi foto daur ulang, gratis, sebelum panggil AI.
-  const isDuplicate = opts.buyerPhotoFilenames
-    .map((f) => opts.registry.checkAndRecord(f, deal.dealCode))
-    .some(Boolean);
+  // Semua foto dicatat (bukan berhenti di duplikat pertama), sama seperti sebelumnya.
+  let isDuplicate = false;
+  for (const f of opts.buyerPhotoFilenames) {
+    if (await opts.registry.checkAndRecord(f, deal.dealCode)) isDuplicate = true;
+  }
   if (isDuplicate) {
     return buildEscalateVerdict(deal, modelName, [
       "Salah satu foto unboxing pembeli sama dengan foto yang pernah dipakai di transaksi lain — kemungkinan foto didaur ulang",

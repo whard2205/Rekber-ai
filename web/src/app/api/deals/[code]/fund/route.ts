@@ -21,7 +21,7 @@ interface FundBody {
  * tidak bisa mengubah harga karena itu sudah dikunci di Offer penjual. */
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const deal = readDeal(code);
+  const deal = await readDeal(code);
   if (!deal || !deal.spec.listingPhotos.length) {
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
   }
@@ -84,7 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
       (permitSig as string) as Hex,
     );
     deal.txs.fund = receipt.transactionHash;
-    writeDeal(deal);
+    await writeDeal(deal);
     return NextResponse.json({ txHash: receipt.transactionHash });
   } catch (err) {
     return NextResponse.json({ error: translateChainError(err) }, { status: 400 });

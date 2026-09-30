@@ -37,7 +37,7 @@ Team: Gedung Hijau.
 > https://github.com/whard2205/Rekber-ai
 
 **Website Project**
-> ⬜ TODO — the public tunnel URL from R-13 (e.g. `https://<name>.trycloudflare.com`), once web+agent are running against BSC Testnet and exposed publicly.
+> https://rekber-ai.vercel.app — web on Vercel (region sin1), data in Upstash Redis; the AI arbiter agent runs as a separate daemon against the same Redis.
 
 **Video Demo**
 > ⬜ TODO — R-15. Script outline lives in [`DECK.md`](DECK.md).

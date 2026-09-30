@@ -17,7 +17,7 @@ interface ConfirmBody {
  * langsung ke penjual, tanpa AI (docs/rekber-ai/PLAN.md §3.6). */
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const deal = readDeal(code);
+  const deal = await readDeal(code);
   if (!deal || !deal.spec.listingPhotos.length) {
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
   }
@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   try {
     const receipt = await act(asHex(deal.dealId), Action.Confirm, ZERO_HASH, BigInt(deadline as number), asHex(sig as string));
     deal.txs.confirm = receipt.transactionHash;
-    writeDeal(deal);
+    await writeDeal(deal);
     return NextResponse.json({ txHash: receipt.transactionHash });
   } catch (err) {
     return NextResponse.json({ error: translateChainError(err) }, { status: 400 });

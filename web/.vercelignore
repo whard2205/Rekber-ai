@@ -1,0 +1,6 @@
+.env
+.env.*
+uploads
+.next
+node_modules
+tsconfig.tsbuildinfo

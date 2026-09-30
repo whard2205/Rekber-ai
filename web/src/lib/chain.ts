@@ -1,6 +1,6 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
+import escrowAbiJson from "@/abi/RekberEscrow.json";
+import idrxAbiJson from "@/abi/MockIDRX.json";
 import {
   createPublicClient,
   createWalletClient,
@@ -16,11 +16,9 @@ import { nonceManager, privateKeyToAccount } from "viem/accounts";
 import { hardhat, base, baseSepolia, bsc, bscTestnet } from "viem/chains";
 import { config } from "./config";
 
-const loadAbi = (name: string): Abi =>
-  JSON.parse(fs.readFileSync(path.join(process.cwd(), "src", "abi", `${name}.json`), "utf8"));
-
-export const escrowAbi = loadAbi("RekberEscrow");
-export const idrxAbi = loadAbi("MockIDRX");
+// Import statis (bukan fs.readFileSync) supaya ABI ikut ter-bundle di Vercel.
+export const escrowAbi = escrowAbiJson as Abi;
+export const idrxAbi = idrxAbiJson as Abi;
 
 const KNOWN_CHAINS: Record<number, typeof hardhat> = {
   31337: hardhat,
