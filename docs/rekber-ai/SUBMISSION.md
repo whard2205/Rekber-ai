@@ -1,57 +1,69 @@
-# Rekber AI — submission form draft
+# Rekber AI — isi form submission
 
-Copy-paste source for indonesiaweb3hack.xyz/id/submit. English throughout (per docs/rekber-ai/PLAN.md R-14).
-Team: Gedung Hijau.
-
----
-
-**Nama Project**
-> Rekber AI
-
-**Tagline (satu kalimat)**
-> Non-custodial escrow with an AI arbiter for Indonesian social commerce — funds locked in a smart contract, disputes settled by AI, no admin who can run off with your money.
-
-**Track**
-> AI Agents, Finance & Commerce
-
-**Contract Address**
-> `0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`
-
-**Network**
-> BNB Smart Chain **Testnet** (chain id 97) — confirm the form's Network dropdown has a Testnet option before submitting; do not select Mainnet.
-
-**Logo Project**
-> Upload [`docs/rekber-ai/logo/logo.png`](logo/logo.png) (1024×1024). Source: [`logo.svg`](logo/logo.svg) — a padlock whose face is a balance scale: the money is locked, the dispute is weighed.
-
-**Problem Statement**
-> Online shopping fraud is the #1 scam type reported to Indonesia's Anti-Scam Centre (IASC, OJK): 53,928 reports between Nov 2024 and Oct 2025, out of ~299,000 scam reports totalling Rp7 trillion in losses. Many person-to-person trades happen outside marketplaces — in Facebook groups, Instagram, WhatsApp and gaming communities — where there is no escrow. People rely on "rekber" (rekening bersama): a middleman who holds the money until the item arrives. But fake rekber is itself a documented scam, licensed rekber services still hold your money, and disputes are decided manually by an admin. Even inside marketplaces, the infamous "ordered a phone, received a brick" cases end with the shop and the courier blaming each other — because nobody collected evidence of who cheated.
-
-**Solution**
-> Rekber AI replaces the human middleman. The buyer's payment is locked in a BNB Chain smart contract that nobody — including us — can withdraw from. The seller must photograph the actual item next to a unique deal code before shipping. If the buyer is satisfied (or stays silent until the window closes), funds release to the seller. If not, an AI arbiter agent compares the seller's promised spec, the packing photo and the buyer's unboxing photo, then autonomously refunds or releases on-chain — or escalates to a human when unsure. Every verdict is committed on-chain as a hash of its reasoning. Users need no wallet setup and pay no gas.
-
-**Project Detail (markdown, supports Mermaid)**
-> Paste [`PROJECT_DETAIL.md`](PROJECT_DETAIL.md) — a judge-facing cut of the README (no install steps or env tables; footnotes turned into inline links). Check the form's PREVIEW tab: the 3 diagrams are SVGs loaded from raw.githubusercontent.com. If they don't show, upload `docs/rekber-ai/diagrams/*.svg` with the form's IMAGE button instead.
-
-**GitHub Repo (public)**
-> https://github.com/whard2205/Rekber-ai
-
-**Website Project**
-> https://rekber-ai.vercel.app — web on Vercel (region sin1), data in Upstash Redis; the AI arbiter agent runs as a separate daemon against the same Redis.
-
-**Video Demo**
-> ⬜ TODO — R-15. Script outline lives in [`DECK.md`](DECK.md).
-
-**X / Twitter, LinkedIn**
-> Optional — team's own accounts, not drafted here.
-
-**Pitch Deck — Canva/Drive**
-> ⬜ TODO — 10-slide deck is built (Claude artifact "Rekber AI Pitch Deck", content from [`DECK.md`](DECK.md)). Export it to PPTX/PDF, upload to Google Drive or import into Canva, set sharing to "anyone with the link", paste that link here. The artifact link itself is private until shared.
+Urutan sama dengan form indonesiaweb3hack.xyz/id/submit. Buka file ini di GitHub: tiap blok punya tombol copy di pojok kanan atas.
 
 ---
 
-## What's actually left before this form can be submitted
+### Nama Project
+```text
+Rekber AI
+```
 
-1. R-12 — calibrate the AI judge on real photos (currently only tested against mock evidence)
-2. R-13 — fund `aiArbiter`/`relayer` wallets with tBNB, run web+agent live against BSC Testnet, expose publicly, test with 2 real phones → gives the **Website Project** link + real per-status testnet transactions for the README table
-3. R-14 — done (this file + `README.md`)
-4. R-15 — logo ✅ and deck ✅ done; still: record video, export deck + share link, publish the repo (after secret scan), submit this form
+### Tagline
+```text
+Rekber tanpa admin: uang dikunci di smart contract BNB Chain, sengketa diputus AI agent — tidak ada yang bisa kabur membawa uangmu.
+```
+
+### Track
+Pilih **AI Agents** dan **Finance & Commerce**.
+
+### Contract Address
+```text
+0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7
+```
+
+### Network
+Pilih **Testnet** (BNB Smart Chain Testnet, chain id 97). Jangan Mainnet.
+
+### Logo Project
+Upload file `docs/rekber-ai/logo/logo.png` (1024×1024).
+
+### Problem Statement
+```text
+Penipuan belanja online adalah modus penipuan yang paling banyak dilaporkan ke Indonesia Anti-Scam Centre (IASC, OJK): 53.928 laporan sepanjang Nov 2024–Okt 2025, dari total ~299.000 laporan dengan kerugian Rp7 triliun. Banyak jual-beli terjadi di luar marketplace — grup Facebook, Instagram, WhatsApp, komunitas game — tanpa escrow, jadi orang mengandalkan rekber (rekening bersama). Masalahnya, rekber bodong sendiri adalah modus penipuan, rekber resmi tetap memegang uangmu, dan sengketa diputus manual oleh admin. Bahkan di marketplace, kasus "pesan HP, yang datang batu" berakhir dengan toko dan kurir saling lempar kesalahan, karena tidak ada yang mengumpulkan bukti siapa yang curang.
+```
+
+### Solution
+```text
+Rekber AI menggantikan perantara manusia. Uang pembeli dikunci di smart contract BNB Chain yang tidak bisa ditarik siapa pun, termasuk kami. Sebelum kirim, penjual wajib memotret barang aslinya di samping kode transaksi unik. Kalau pembeli puas (atau diam sampai batas waktu), uang cair ke penjual. Kalau komplain, AI arbiter agent membandingkan janji penjual, foto packing, dan foto unboxing pembeli, lalu otomatis refund atau mencairkan dana on-chain dengan wallet-nya sendiri — atau menyerahkan ke arbiter manusia kalau keyakinannya di bawah 85%. Setiap putusan tercatat on-chain sebagai hash dari alasannya, jadi bisa dicek ulang siapa saja. Pengguna tidak perlu install wallet dan tidak bayar gas.
+```
+
+### Project Detail
+Buka [`PROJECT_DETAIL.md`](PROJECT_DETAIL.md) di GitHub → tombol **Copy raw file** (ikon copy di atas isi file) → paste ke kolom → cek tab **PREVIEW**. Kalau 3 diagram tidak muncul di preview, upload file dari `docs/rekber-ai/diagrams/` lewat tombol **IMAGE**.
+
+### GitHub Repo
+```text
+https://github.com/whard2205/Rekber-ai
+```
+
+### Project Website
+```text
+https://rekber-ai.vercel.app
+```
+
+### Demo Video (YouTube)
+⬜ Belum — rekam setelah R-12 & R-13. Naskah ada di [`DECK.md`](DECK.md).
+
+### Pitch Deck (Canva/Drive)
+⬜ Belum — buka deck → Share › Export ke PPTX/PDF → upload ke Google Drive → set "anyone with the link" → paste link-nya di sini.
+
+### X / Twitter, LinkedIn
+Opsional — akun tim sendiri.
+
+---
+
+## Sebelum klik Submit
+
+1. **R-12** — kalibrasi AI pakai foto asli (sekarang AI di web live masih mode `mock`; Project Detail menyebut vision model, jadi ini harus beres dulu).
+2. **R-13** — satu transaksi lengkap pakai 2 HP di https://rekber-ai.vercel.app, dengan AI agent menyala di laptop.
+3. **Video** + **link deck** di atas.
