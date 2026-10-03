@@ -163,7 +163,11 @@ flowchart LR
 | AI hakim kan sudah ada (GenLayer/Internet Court)? | Justru itu validasi: OKX & MetaMask ikut konsorsiumnya. Mereka fokus sengketa layanan digital antar AI agent; kami fokus barang fisik antar manusia dengan protokol bukti foto dan pengguna awam Indonesia. |
 | Legal? | Lihat §8 — terang-terangan: stablecoin rupiah + on-ramp berizin + mitra PJP. |
 | Kalau server kalian mati? | Kontrak tetap jalan: tidak dikirim → refund; diam → cair; sengketa tak diputus → 50/50. Tidak ada dana yang nyangkut selamanya. |
-| Revenue? | 1% hanya dari transaksi yang berhasil. |
+| Revenue? | 1% hanya dari transaksi yang berhasil, dipotong otomatis oleh kontrak ke `feeRecipient` kami. Refund & split gratis. |
+| Untungnya ke Binance? | Tidak. Kami hanya memakai BNB Chain; gas dibayar relayer kami (biaya, bukan pendapatan). Fee 1% masuk ke wallet kami. |
+| Seberapa besar pasarnya? | BPS 2024: e-commerce Rp1.288,93 T, 84,21% di luar marketplace → TAM Rp1.085 T. SAM ±Rp398 T (36,64% usaha menjual barang dagangan — proxy kasar, porsi usaha bukan nilai). SOM tahun-1 (target, bukan data): 1.000 penjual × 10 deal/bulan × Rp1 juta = Rp120 M GMV → Rp1,2 M fee. Sumber: BPS *Statistik E-Commerce 2024* via Databoks: https://databoks.katadata.co.id/en/technology-telecommunications/statistics/69325fdf33aa9/e-commerce-transaction-value-in-indonesia-increased-by-17-in-2024 |
+| Kalau kurir yang menukar barang? | Foto packing asli + unboxing batu = barang hilang di jalan. AI tidak menebak: bukti dua pihak kuat tapi bertentangan → eskalasi ke manusia (aturan 6). Belum terjawab: siapa yang menanggung rugi. Jalurnya: bukti foto kami dipakai untuk klaim ke kurir. |
+| Pembeli di Papua, penjual di Jawa? | Jarak bukan masalah — perantaranya kontrak, bukan orang; bayar dari HP, kirim pakai kurir biasa. Yang perlu diperbaiki: batas waktu kirim/konfirmasi sekarang sama untuk semua deal (diset saat deploy). Berikutnya: deadline per deal sesuai estimasi kurir + jendela konfirmasi mulai saat paket diterima. |
 | Kenapa BNB Chain? | Blok ±0,75 detik sejak hardfork Maxwell (Jun 2025) → pembayaran terasa instan; EIP-7702 aktif sejak Pascal (Mar 2025) dan paymaster MegaFuel → jalur resmi untuk transaksi tanpa gas bagi pengguna awam; IDRX (stablecoin rupiah) sudah ada di BNB Chain. *(§14 [13][14][15][16])* |
 
 ## 12. Draf teks submission (English — form & README)

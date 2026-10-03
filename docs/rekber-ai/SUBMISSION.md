@@ -11,7 +11,7 @@ Rekber AI
 
 ### Tagline
 ```text
-Rekber tanpa admin: uang dikunci di smart contract BNB Chain, sengketa diputus AI agent — tidak ada yang bisa kabur membawa uangmu.
+Rekber yang tidak bisa kabur membawa uangmu: uang dikunci di smart contract BNB Chain, sengketa diputus AI agent.
 ```
 
 ### Track

@@ -15,7 +15,7 @@ export default async function HomePage() {
   return (
     <div>
       <section className="hero">
-        <h1>Rekber tanpa admin.</h1>
+        <h1>Rekber yang tidak bisa kabur membawa uangmu.</h1>
         <p>
           Uang pembeli dikunci di smart contract, bukan di rekening orang. Kalau ada komplain, AI membandingkan
           janji penjual, foto packing, dan foto unboxing, lalu memutus. Kami sendiri tidak bisa menyentuh uangnya.

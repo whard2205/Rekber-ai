@@ -1,6 +1,6 @@
 # Rekber AI
 
-**Rekber without an admin: funds held by a smart contract, disputes settled by AI.**
+**A rekber that can't run off with your money: funds held by a smart contract, disputes settled by an AI agent.**
 
 Built for the [Indonesia Web3 Hackathon 2026](https://indonesiaweb3hack.xyz) (Binance Academy × BNB Chain × Coinvestasi) — AI Agents / Finance & Commerce track.
 

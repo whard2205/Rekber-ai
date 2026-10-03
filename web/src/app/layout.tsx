@@ -8,7 +8,7 @@ const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Rekber AI — rekber tanpa admin",
+  title: "Rekber AI — rekber yang tidak bisa kabur membawa uangmu",
   description: "Uang dikunci di smart contract, sengketa diputus AI. Tidak ada admin yang bisa kabur membawa uangmu.",
 };
 
