@@ -3,7 +3,7 @@ import { TransitionSeries, springTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { theme } from "./theme";
-import { SCENES, sceneFrames, type Scene } from "./edl";
+import { NARRATION, SCENES, sceneFrames, type Scene } from "./edl";
 import { Stage } from "./components/Layers";
 import { ClipScene } from "./scenes/ClipScene";
 import { ChapterCard, CloseCard, DiagramCard, HookCard, IdeaCard, StatsCard, TitleCard } from "./scenes/Cards";
@@ -23,19 +23,22 @@ const render = (s: Scene) => {
 
 const timing = springTiming({ config: { damping: 200 }, durationInFrames: theme.transitionFrames });
 
-/** Awal tiap adegan di timeline akhir (transisi saling tumpang-tindih). */
+// Setiap Sequence diperpanjang selebar transisinya, supaya awal adegan ke-n jatuh tepat di
+// jumlah durasi adegan sebelumnya = saat paragraf ke-n narasi mulai diucapkan.
+const seqFrames = (i: number, fps: number): number =>
+  sceneFrames(SCENES[i], fps) + (i < SCENES.length - 1 ? theme.transitionFrames : 0);
+
+/** Awal tiap adegan di timeline akhir. */
 export const sceneStarts = (fps: number): number[] => {
-  const starts: number[] = [];
   let t = 0;
-  SCENES.forEach((s, i) => {
-    starts.push(t);
-    t += sceneFrames(s, fps) - (i < SCENES.length - 1 ? theme.transitionFrames : 0);
+  return SCENES.map((s) => {
+    const start = t;
+    t += sceneFrames(s, fps);
+    return start;
   });
-  return starts;
 };
 
-export const totalFrames = (fps: number): number =>
-  SCENES.reduce((sum, s) => sum + sceneFrames(s, fps), 0) - (SCENES.length - 1) * theme.transitionFrames;
+export const totalFrames = (fps: number): number => SCENES.reduce((sum, s) => sum + sceneFrames(s, fps), 0);
 
 export const Demo: React.FC = () => {
   const starts = sceneStarts(theme.fps);
@@ -45,7 +48,7 @@ export const Demo: React.FC = () => {
         <TransitionSeries>
           {SCENES.flatMap((s, i) => {
             const seq = (
-              <TransitionSeries.Sequence key={`s${i}`} durationInFrames={sceneFrames(s, theme.fps)}>
+              <TransitionSeries.Sequence key={`s${i}`} durationInFrames={seqFrames(i, theme.fps)}>
                 {render(s)}
               </TransitionSeries.Sequence>
             );
@@ -55,10 +58,12 @@ export const Demo: React.FC = () => {
           })}
         </TransitionSeries>
       </Stage>
-      <Audio src={staticFile("sfx/pad.wav")} volume={0.22} loop />
+      <Audio src={staticFile(NARRATION.src)} trimBefore={Math.round(NARRATION.trimStart * theme.fps)} volume={NARRATION.volume} />
+      {/* Musik diredam di bawah suara. */}
+      <Audio src={staticFile("sfx/pad.wav")} volume={0.07} loop />
       {starts.slice(1).map((f, i) => (
         <Sequence key={i} from={Math.max(0, f - 3)} durationInFrames={20}>
-          <Audio src={staticFile("sfx/whoosh.wav")} volume={0.35} />
+          <Audio src={staticFile("sfx/whoosh.wav")} volume={0.18} />
         </Sequence>
       ))}
     </>

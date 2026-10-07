@@ -50,10 +50,10 @@ export const HookCard: React.FC = () => {
           {Math.round(count).toLocaleString("id-ID")}
         </div>
         <WordReveal text="laporan penipuan belanja online ke Indonesia Anti Scam Centre, Nov 2024 sampai Okt 2025." delay={18} per={2} style={{ ...body, maxWidth: 1250 }} />
-        <Entrance delay={110}>
+        <Entrance delay={276}>
           <div style={{ ...display(64), fontStyle: "italic", fontWeight: 400, marginTop: 30 }}>"Pesan HP, yang datang batu."</div>
         </Entrance>
-        <Entrance delay={130}><div style={{ ...body, fontSize: 22 }}>Sumber: data IASC via Databoks Katadata, Okt 2025. Liputan6, Okt 2021.</div></Entrance>
+        <Entrance delay={296}><div style={{ ...body, fontSize: 22 }}>Sumber: data IASC via Databoks Katadata, Okt 2025. Liputan6, Okt 2021.</div></Entrance>
       </AbsoluteFill>
     </ExitWrap>
   );

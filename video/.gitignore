@@ -2,3 +2,5 @@ node_modules
 out
 public/footage
 public/sfx
+whisper.cpp
+public/voice.*

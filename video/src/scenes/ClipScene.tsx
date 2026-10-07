@@ -2,7 +2,7 @@ import { AbsoluteFill } from "remotion";
 import { theme } from "../theme";
 import { Device } from "../components/Devices";
 import { Entrance, ExitWrap, WordReveal } from "../components/Motion";
-import type { ClipScene as ClipSceneData } from "../edl";
+import { clipSpeed, type ClipScene as ClipSceneData } from "../edl";
 
 const Caption: React.FC<{ s: ClipSceneData; width: number }> = ({ s, width }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 24, width }}>
@@ -24,7 +24,7 @@ const Caption: React.FC<{ s: ClipSceneData; width: number }> = ({ s, width }) =>
 );
 
 export const ClipScene: React.FC<{ s: ClipSceneData }> = ({ s }) => {
-  const device = <Device kind={s.kind} src={s.src} fromSec={s.from} toSec={s.to} speed={s.speed} crop={s.crop} source={s.source} label={s.label} />;
+  const device = <Device kind={s.kind} src={s.src} fromSec={s.from} toSec={s.to} speed={clipSpeed(s)} crop={s.crop} source={s.source} label={s.label} />;
   if (s.kind === "wide") {
     return (
       <ExitWrap>
