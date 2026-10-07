@@ -28,7 +28,14 @@ Web app: **https://rekber-ai.vercel.app** (Vercel, data in Upstash Redis). The A
 | `RekberEscrow` | [`0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) | Verified |
 | `MockIDRX` (test token, 0 decimals — matches real IDRX) | [`0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3`](https://testnet.bscscan.com/address/0xb93bEfc82B86a2dE25ece770D54Fb4aFE73909c3#code) | Verified |
 
-Example transaction per status (Funded / Shipped / Released / Disputed / Refunded): *added after the live 2-phone testnet run — see [`docs/rekber-ai/PLAN.md`](https://github.com/whard2205/Rekber-ai/blob/main/docs/rekber-ai/PLAN.md) R-13.*
+Live run, deal `RKB-DVYEM5` (7 Oct 2026): listed iPhone 15, a closed box as packing proof, a lotion bottle at unboxing. The AI judged it from the photos and refunded the buyer on-chain.
+
+| Step | Transaction |
+|---|---|
+| Funded — buyer pays (gasless, relayer-submitted) | [`0xe992dab0…`](https://testnet.bscscan.com/tx/0xe992dab05c4d8e5f9686a321e13abb588ebdaa3976728bcfd0be694fc0d4e135) |
+| Shipped — seller's packing evidence hash | [`0xa2eb8d0b…`](https://testnet.bscscan.com/tx/0xa2eb8d0ba1df779b5c398eaad1a29bad6cc58e198543cebcdbb2f695bf5ea287) |
+| Disputed — buyer's unboxing evidence hash | [`0x0f4ea95d…`](https://testnet.bscscan.com/tx/0x0f4ea95d2a54071a396afa265f4a821464088736fa4ed191f44af11dde87cd6c) |
+| Refunded — **AI verdict** (REFUND, confidence 0.90), sent by the agent's own wallet with `verdictHash 0x68b5ab1d…` | [`0x779be38f…`](https://testnet.bscscan.com/tx/0x779be38f81ef82555f4faed4c7331495a2f38d6c4054ab95a46b2e9cbd721991) |
 
 ## Architecture
 

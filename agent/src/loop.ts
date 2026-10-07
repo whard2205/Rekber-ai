@@ -173,7 +173,15 @@ export async function runDaemon(): Promise<void> {
 
   for (;;) {
     await sleep(config.pollMs);
-    const deals = (await listDeals()).filter((d) => !!d.txs.fund && !finalized.has(d.dealCode));
+    // Gagal baca daftar deal (Redis/jaringan timeout) = lewati tick ini, jangan matikan daemon:
+    // tick berikutnya mencoba lagi. Error per-deal ditangani terpisah di bawah.
+    let deals: Awaited<ReturnType<typeof listDeals>>;
+    try {
+      deals = (await listDeals()).filter((d) => !!d.txs.fund && !finalized.has(d.dealCode));
+    } catch (err) {
+      console.log(`   ⚠️ gagal membaca daftar deal (${(err as Error).message}) — coba lagi tick berikutnya`);
+      continue;
+    }
 
     for (const deal of deals) {
       try {
