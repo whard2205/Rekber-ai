@@ -47,7 +47,13 @@ export async function GET(req: Request) {
       verdict: await readVerdict(spotlight.deal.dealCode),
       windows: { ...windows, sellerResponseSeconds: config.sellerResponseSeconds },
     },
-    recent: deals.slice(0, 8).map((d) => ({ dealCode: d.dealCode, title: d.spec.title, priceIDRX: d.spec.priceIDRX, listingPhoto: d.spec.listingPhotos[0] ?? null })),
+    recent: withOnchain.slice(0, 8).map(({ deal: d, onchain }) => ({
+      dealCode: d.dealCode,
+      title: d.spec.title,
+      priceIDRX: d.spec.priceIDRX,
+      listingPhoto: d.spec.listingPhotos[0] ?? null,
+      status: onchain?.status ?? 0,
+    })),
     auditLog: await readAuditLogTail(12),
   });
 }

@@ -386,6 +386,8 @@ export default function DealPage() {
 
       <Timeline deal={deal} onchain={onchain} windows={windows} />
 
+      <EvidenceGallery deal={deal} />
+
       {error && <div className="alert alert-fail">{error}</div>}
 
       {!onchain && !isSeller && (
@@ -425,14 +427,7 @@ export default function DealPage() {
       {onchain?.status === Status.Disputed && (!isSeller || deal.sellerResponse) && (
         <div className="card">
           <p className="card-title" style={{ fontSize: 14 }}>Sengketa sedang diproses</p>
-          <p className="card-meta">{deal.dispute?.complaint}</p>
-          {deal.sellerResponse && (
-            <>
-              <p className="card-title" style={{ fontSize: 13, marginTop: 10 }}>Tanggapan penjual</p>
-              <p className="card-meta">{deal.sellerResponse.text}</p>
-            </>
-          )}
-          <p className="card-meta" style={{ marginTop: 8 }}>Menunggu putusan AI…</p>
+          <p className="card-meta">AI sedang membaca bukti di atas. Putusan biasanya keluar dalam 1–2 menit setelah penjual menanggapi atau batas waktunya lewat.</p>
         </div>
       )}
 
@@ -443,7 +438,7 @@ export default function DealPage() {
       )}
 
       {onchain && isFinal(onchain.status) && (
-        <FinalBanner onchain={onchain} verdict={verdict} />
+        <FinalBanner deal={deal} onchain={onchain} verdict={verdict} me={wallet?.address ?? null} />
       )}
     </div>
   );
@@ -677,9 +672,63 @@ function RespondCard({ busy, onRespond }: { busy: boolean; onRespond: (photos: F
   );
 }
 
-function FinalBanner({ onchain, verdict }: { onchain: OnchainDeal; verdict: VerdictFile | null }) {
+/** Foto bukti tiap pihak, supaya pembeli & penjual melihat apa yang dibaca AI. */
+function EvidenceGallery({ deal }: { deal: DealRecord }) {
+  const groups = [
+    {
+      title: "Bukti kirim dari penjual",
+      photos: [...(deal.shipment?.packingPhotos ?? []), ...(deal.shipment?.resiPhoto ? [deal.shipment.resiPhoto] : [])],
+      text: deal.shipment?.resiText ? `Resi: ${deal.shipment.resiText}` : "",
+    },
+    { title: "Bukti unboxing dari pembeli", photos: deal.dispute?.photos ?? [], text: deal.dispute?.complaint ?? "" },
+    { title: "Tanggapan penjual", photos: deal.sellerResponse?.photos ?? [], text: deal.sellerResponse?.text ?? "" },
+  ].filter((g) => g.photos.length > 0 || g.text);
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="card">
+      <p className="card-title">Bukti</p>
+      {groups.map((g) => (
+        <div key={g.title}>
+          <p className="evidence-label">{g.title}</p>
+          {g.photos.length > 0 && (
+            <div className="thumbs">
+              {g.photos.map((p) => (
+                <a key={p} href={evidenceUrl(p)} target="_blank" rel="noreferrer">
+                  <img src={evidenceUrl(p)} alt={g.title} />
+                </a>
+              ))}
+            </div>
+          )}
+          {g.text && <p className="card-meta" style={{ marginTop: 6 }}>{g.text}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Ke mana uangnya pergi, dalam angka. ponytail: fee 1% = feeBps 100 kontrak yang di-deploy;
+ * baca feeBps dari kontrak kalau suatu saat di-deploy dengan fee lain. */
+function settlementLine(onchain: OnchainDeal, me: string | null): string | null {
+  const amount = BigInt(onchain.amount);
+  const who = (addr: string) => `${shortAddress(addr)}${me && me.toLowerCase() === addr.toLowerCase() ? " (wallet kamu)" : ""}`;
+  if (onchain.status === Status.Released) {
+    const fee = amount / 100n;
+    return `${rupiah(amount - fee)} masuk ke wallet penjual ${who(onchain.seller)}. Fee 1%: ${rupiah(fee)}.`;
+  }
+  if (onchain.status === Status.Refunded) return `${rupiah(amount)} kembali utuh ke wallet pembeli ${who(onchain.buyer)}, tanpa potongan.`;
+  if (onchain.status === Status.Split) {
+    const half = amount / 2n;
+    return `${rupiah(half)} ke pembeli ${who(onchain.buyer)}, ${rupiah(amount - half)} ke penjual ${who(onchain.seller)}, tanpa potongan.`;
+  }
+  return null;
+}
+
+function FinalBanner({ deal, onchain, verdict, me }: { deal: DealRecord; onchain: OnchainDeal; verdict: VerdictFile | null; me: string | null }) {
   const [check, setCheck] = useState<{ recomputed: string; matches: boolean } | null>(null);
   const commit = verdict?.commit;
+  const settled = settlementLine(onchain, me);
+  const settleTx = verdict?.txHash ?? deal.txs.confirm;
 
   async function checkHash() {
     if (!commit) return;
@@ -690,9 +739,14 @@ function FinalBanner({ onchain, verdict }: { onchain: OnchainDeal; verdict: Verd
   return (
     <div className="card" style={{ borderColor: "var(--accent)" }}>
       <p className="card-title">{STATUS_LABEL[onchain.status]}</p>
+      {settled && (
+        <p style={{ fontSize: 15, lineHeight: 1.5, margin: "6px 0 10px" }}>
+          {settled} {settleTx && <TxLink hash={settleTx} />}
+        </p>
+      )}
       {commit && commit.outcome !== "ESCALATE" && (
         <>
-          <p className="card-meta">Confidence AI: {(commit.confidence * 100).toFixed(0)}%</p>
+          <p className="card-meta">Diputus AI · keyakinan {(commit.confidence * 100).toFixed(0)}%</p>
           <ul className="criteria">
             {commit.reasons.map((r, i) => (
               <li key={i}>{r}</li>
@@ -705,7 +759,7 @@ function FinalBanner({ onchain, verdict }: { onchain: OnchainDeal; verdict: Verd
           {onchain.status === Status.Split ? "Sengketa tidak diputus tepat waktu — dana dibagi otomatis oleh kontrak." : "Diselesaikan otomatis oleh kontrak."}
         </p>
       )}
-      <p style={{ fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all", marginTop: 8 }}>
+      <p className="mono" style={{ fontSize: 12, wordBreak: "break-all", marginTop: 8 }}>
         verdictHash: {onchain.verdictHash}
       </p>
       {commit && (

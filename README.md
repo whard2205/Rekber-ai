@@ -36,6 +36,7 @@ Live run, deal `RKB-DVYEM5` (7 Oct 2026): listed iPhone 15, a closed box as pack
 | Shipped — seller's packing evidence hash | [`0xa2eb8d0b…`](https://testnet.bscscan.com/tx/0xa2eb8d0ba1df779b5c398eaad1a29bad6cc58e198543cebcdbb2f695bf5ea287) |
 | Disputed — buyer's unboxing evidence hash | [`0x0f4ea95d…`](https://testnet.bscscan.com/tx/0x0f4ea95d2a54071a396afa265f4a821464088736fa4ed191f44af11dde87cd6c) |
 | Refunded — **AI verdict** (REFUND, confidence 0.90), sent by the agent's own wallet with `verdictHash 0x68b5ab1d…` | [`0x779be38f…`](https://testnet.bscscan.com/tx/0x779be38f81ef82555f4faed4c7331495a2f38d6c4054ab95a46b2e9cbd721991) |
+| Released — happy path, deal `RKB-SQN8FX`: buyer confirms, seller is paid minus the 1% fee | [`0x3aa65ac3…`](https://testnet.bscscan.com/tx/0x3aa65ac35309afbc2684a840f7b4b42dcabaacfacab2ef478c84c72a21edb437) |
 
 ## Architecture
 

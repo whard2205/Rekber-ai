@@ -7,6 +7,7 @@
  * api/dashboard/route.ts). Poll tiap 2 detik supaya event terlihat ≤ 3 detik.
  */
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import { rupiah, shortAddress } from "@/lib/format";
@@ -69,7 +70,7 @@ interface AuditEntry {
 
 interface DashboardResponse {
   spotlight: Spotlight | null;
-  recent: { dealCode: string; title: string; priceIDRX: string; listingPhoto: string | null }[];
+  recent: { dealCode: string; title: string; priceIDRX: string; listingPhoto: string | null; status: number }[];
   auditLog: AuditEntry[];
 }
 
@@ -152,12 +153,19 @@ function PanggungInner() {
             </div>
             {data.recent.length > 0 && (
               <div className="card">
-                <p className="card-title" style={{ fontSize: 16 }}>Transaksi lain</p>
+                <p className="card-title" style={{ fontSize: 16 }}>Riwayat transaksi</p>
                 {data.recent.map((d) => (
-                  <div key={d.dealCode} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-                    <span>{d.title}</span>
+                  <Link
+                    key={d.dealCode}
+                    href={`/panggung?deal=${d.dealCode}`}
+                    style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, padding: "8px 0", borderTop: "1px solid var(--border)", textDecoration: "none", fontWeight: data.spotlight?.deal.dealCode === d.dealCode ? 700 : 400 }}
+                  >
+                    <span>
+                      {d.title}
+                      <span style={{ display: "block", fontSize: 12, color: "var(--ink-soft)" }}>{STATUS_LABEL[d.status]}</span>
+                    </span>
                     <span className="bounty">{rupiah(d.priceIDRX)}</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
