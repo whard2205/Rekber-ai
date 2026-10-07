@@ -24,6 +24,7 @@ Full write-up (rules of evidence, competitor analysis, regulatory notes, sources
 Web app: **https://rekber-ai.vercel.app** (Vercel, data in Upstash Redis). The AI arbiter agent is a long-running daemon, so it runs separately (`cd agent && npm start`) against the same Redis — see `KV_REST_API_URL` in `.env.example`.
 
 Demo video (2:15): **https://www.youtube.com/watch?v=gYAv-NHmSQw**
+Pitch deck (PDF): https://drive.google.com/file/d/1VSCTxbC4Kal96IwXobMIj89gJ70oOsNE/view
 
 | Contract | Address | Status |
 |---|---|---|

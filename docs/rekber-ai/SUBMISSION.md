@@ -1,6 +1,6 @@
 # Rekber AI — isi form submission
 
-Urutan sama dengan form indonesiaweb3hack.xyz/id/submit. Buka file ini di GitHub: tiap blok punya tombol copy di pojok kanan atas.
+**Status: sudah disubmit 7 Okt 2026.** Perubahan dilakukan lewat tombol **Edit project** di portal. Urutan sama dengan form; buka file ini di GitHub, tiap blok punya tombol copy di pojok kanan atas.
 
 ---
 
@@ -11,11 +11,11 @@ Rekber AI
 
 ### Tagline
 ```text
-Rekber yang tidak bisa kabur membawa uangmu: uang dikunci di smart contract BNB Chain, sengketa diputus AI agent.
+Rekber yang tidak bisa kabur membawa uangmu: dana dikunci di smart contract, sengketa diputus AI.
 ```
 
 ### Track
-Pilih **AI Agents** dan **Finance & Commerce**.
+Pilih **AI Agents**, **Finance & Commerce**, dan **Consumer Apps**.
 
 ### Contract Address
 ```text
@@ -23,23 +23,23 @@ Pilih **AI Agents** dan **Finance & Commerce**.
 ```
 
 ### Network
-Pilih **Testnet** (BNB Smart Chain Testnet, chain id 97). Jangan Mainnet.
+Pilih **BSC Testnet**. Bukan BSC (mainnet) dan bukan opBNB Testnet, karena kontraknya hanya ada di BSC Testnet (chain id 97); pilihan lain memunculkan "Alamat kontrak tidak ditemukan di network yang dipilih".
 
 ### Logo Project
 Upload file `docs/rekber-ai/logo/logo.png` (1024×1024).
 
 ### Problem Statement
 ```text
-Penipuan belanja online adalah modus penipuan yang paling banyak dilaporkan ke Indonesia Anti-Scam Centre (IASC, OJK): 53.928 laporan sepanjang Nov 2024–Okt 2025, dari total ~299.000 laporan dengan kerugian Rp7 triliun. Banyak jual-beli terjadi di luar marketplace — grup Facebook, Instagram, WhatsApp, komunitas game — tanpa escrow, jadi orang mengandalkan rekber (rekening bersama). Masalahnya, rekber bodong sendiri adalah modus penipuan, rekber resmi tetap memegang uangmu, dan sengketa diputus manual oleh admin. Bahkan di marketplace, kasus "pesan HP, yang datang batu" berakhir dengan toko dan kurir saling lempar kesalahan, karena tidak ada yang mengumpulkan bukti siapa yang curang.
+Penipuan belanja online adalah modus penipuan yang paling banyak dilaporkan ke IASC (OJK): 53.928 laporan dari November 2024 sampai Oktober 2025, dari total sekitar 299.000 laporan dengan kerugian Rp7 triliun. Banyak jual beli terjadi di luar marketplace, di grup Facebook, Instagram, dan WhatsApp, tanpa escrow. Orang lalu memakai rekber (rekening bersama). Masalahnya, rekber bodong sendiri adalah modus penipuan, rekber resmi tetap memegang uangmu, dan sengketanya diputus manual oleh admin. Di marketplace pun, kasus "pesan HP, yang datang batu" berakhir dengan toko dan kurir saling menyalahkan, karena tidak ada yang mengumpulkan bukti siapa yang curang.
 ```
 
 ### Solution
 ```text
-Rekber AI menggantikan perantara manusia. Uang pembeli dikunci di smart contract BNB Chain yang tidak bisa ditarik siapa pun, termasuk kami. Sebelum kirim, penjual wajib memotret barang aslinya di samping kode transaksi unik. Kalau pembeli puas (atau diam sampai batas waktu), uang cair ke penjual. Kalau komplain, AI arbiter agent membandingkan janji penjual, foto packing, dan foto unboxing pembeli, lalu otomatis refund atau mencairkan dana on-chain dengan wallet-nya sendiri — atau menyerahkan ke arbiter manusia kalau keyakinannya di bawah 85%. Setiap putusan tercatat on-chain sebagai hash dari alasannya, jadi bisa dicek ulang siapa saja. Pengguna tidak perlu install wallet dan tidak bayar gas.
+Rekber AI menggantikan perantara yang memegang uang. Dana pembeli dikunci di smart contract BNB Chain dan tidak bisa ditarik siapa pun, termasuk kami. Sebelum mengirim, penjual wajib memotret barangnya di samping kode transaksi unik. Kalau pembeli puas, atau diam sampai batas waktu, dana cair ke penjual. Kalau ada komplain, AI agent membandingkan janji penjual, foto packing, dan foto unboxing pembeli, lalu mengembalikan dana ke pembeli atau mencairkannya ke penjual langsung di blockchain dengan wallet-nya sendiri. Kalau ragu, kasusnya diserahkan ke manusia. Setiap putusan disimpan on-chain sebagai hash yang bisa dicek siapa saja. Pengguna tidak perlu install wallet dan tidak bayar gas.
 ```
 
 ### Project Detail
-Buka [`PROJECT_DETAIL.md`](PROJECT_DETAIL.md) di GitHub → tombol **Copy raw file** (ikon copy di atas isi file) → paste ke kolom → cek tab **PREVIEW**. Kalau 3 diagram tidak muncul di preview, upload file dari `docs/rekber-ai/diagrams/` lewat tombol **IMAGE**.
+**Isi kolom ini dengan isi file, bukan link.** Buka [`PROJECT_DETAIL.md`](PROJECT_DETAIL.md) di GitHub → tombol **Copy raw file** (ikon copy di atas isi file) → paste ke kolom → cek tab **PREVIEW**: judul, tabel, dan 3 diagram harus muncul. Kalau diagram tidak muncul, upload file dari `docs/rekber-ai/diagrams/` lewat tombol **IMAGE**.
 
 ### GitHub Repo
 ```text
@@ -57,10 +57,12 @@ https://www.youtube.com/watch?v=gYAv-NHmSQw
 ```
 
 ### Pitch Deck (Canva/Drive)
-Opsional kalau kolomnya tidak wajib. Kalau wajib: buka deck → Share › Export ke PPTX/PDF → upload ke Google Drive → set "anyone with the link" → paste link-nya di sini.
+```text
+https://drive.google.com/file/d/1VSCTxbC4Kal96IwXobMIj89gJ70oOsNE/view?usp=drive_link
+```
 
 ### X / Twitter, LinkedIn
-Opsional — akun tim sendiri.
+Opsional, akun tim sendiri (sudah diisi di form).
 
 ---
 

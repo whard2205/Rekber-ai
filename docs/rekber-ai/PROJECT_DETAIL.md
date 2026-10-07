@@ -3,6 +3,7 @@
 **Rekber yang tidak bisa kabur membawa uangmu — a rekber that can't run off with your money.** The buyer's money is locked in a BNB Chain smart contract, and disputes are settled by an AI agent that settles on-chain with its own wallet. Nobody, including us, can run off with the money.
 
 - **Demo video (2:15):** https://www.youtube.com/watch?v=gYAv-NHmSQw
+- **Pitch deck (PDF):** https://drive.google.com/file/d/1VSCTxbC4Kal96IwXobMIj89gJ70oOsNE/view
 - **Live app:** https://rekber-ai.vercel.app
 - **Contract:** [`RekberEscrow` 0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) (BSC Testnet, verified)
 - **Code:** https://github.com/whard2205/Rekber-ai
