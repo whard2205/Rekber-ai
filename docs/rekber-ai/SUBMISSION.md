@@ -52,10 +52,12 @@ https://rekber-ai.vercel.app
 ```
 
 ### Demo Video (YouTube)
-⬜ Belum — rekam setelah R-12 & R-13. Naskah ada di [`DECK.md`](DECK.md).
+```text
+https://www.youtube.com/watch?v=gYAv-NHmSQw
+```
 
 ### Pitch Deck (Canva/Drive)
-⬜ Belum — buka deck → Share › Export ke PPTX/PDF → upload ke Google Drive → set "anyone with the link" → paste link-nya di sini.
+Opsional kalau kolomnya tidak wajib. Kalau wajib: buka deck → Share › Export ke PPTX/PDF → upload ke Google Drive → set "anyone with the link" → paste link-nya di sini.
 
 ### X / Twitter, LinkedIn
 Opsional — akun tim sendiri.
@@ -64,6 +66,5 @@ Opsional — akun tim sendiri.
 
 ## Sebelum klik Submit
 
-1. **R-12** — kalibrasi AI pakai foto asli (sekarang AI di web live masih mode `mock`; Project Detail menyebut vision model, jadi ini harus beres dulu).
-2. **R-13** — satu transaksi lengkap pakai 2 HP di https://rekber-ai.vercel.app, dengan AI agent menyala di laptop.
-3. **Video** + **link deck** di atas.
+- R-12 (kalibrasi foto asli) dan R-13 (transaksi asli dua perangkat) sudah selesai; AI agent memakai model vision sungguhan.
+- Simpan **edit code** yang muncul setelah submit, supaya isian masih bisa diubah sebelum form ditutup.

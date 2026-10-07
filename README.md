@@ -23,6 +23,8 @@ Full write-up (rules of evidence, competitor analysis, regulatory notes, sources
 
 Web app: **https://rekber-ai.vercel.app** (Vercel, data in Upstash Redis). The AI arbiter agent is a long-running daemon, so it runs separately (`cd agent && npm start`) against the same Redis — see `KV_REST_API_URL` in `.env.example`.
 
+Demo video (2:15): **https://www.youtube.com/watch?v=gYAv-NHmSQw**
+
 | Contract | Address | Status |
 |---|---|---|
 | `RekberEscrow` | [`0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7`](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) | Verified |
@@ -94,7 +96,7 @@ npm run dev                  # http://localhost:3001
 
 ```bash
 cd contracts && npx hardhat test        # 61 passing — full state machine, signature paths, fee math
-cd agent      && npm test               # 16 passing — judge gating, verdict hashing, shipment check
+cd agent      && npm test               # 17 passing — judge gating, verdict hashing, shipment check
 cd agent      && npm run typecheck
 cd web        && npm run typecheck && npm run build
 cd web        && npm run smoke          # scripts/smoke-test.mjs — 5 e2e scenarios over real HTTP + chain:

@@ -319,9 +319,10 @@ Loop tiap `POLL_MS` (3000):
   *Cek:* tabel hasil di `docs/rekber-ai/CALIBRATION.md` (kasus, keputusan, confidence, waktu).
   *Catatan (7 Okt):* 9/9 benar di 3 ronde berturut-turut (3,9–6,1 detik). Butuh 3 revisi prompt; perubahan terbesar: model hanya menilai bukti KUAT/LEMAH per pihak, keputusan diturunkan kode (`applyRules`). Kasus batu bata diganti botol lotion.
 
-- [ ] **R-13 · 🛑 CHECKPOINT USER — e2e di BSC testnet + hosting demo**
+- [x] **R-13 · 🛑 CHECKPOINT USER — e2e di BSC testnet + hosting demo**
   Isi `.env` web/agent untuk chain 97 (user). Jalankan web + agent di satu mesin; ekspos dengan `cloudflared tunnel --url http://localhost:3001` (atau VPS terpisah milik user — **jangan** pakai container PAIO/sales). Uji dengan 2 HP sungguhan: satu transaksi sukses, satu sengketa batu bata.
   *Cek:* semua tx punya link BscScan yang bisa dibuka; `NEXT_PUBLIC_APP_URL` = URL publik.
+  *Catatan (7 Okt):* hosting di Vercel + Upstash Redis (bukan tunnel). Laptop = penjual, HP = pembeli. RKB-SQN8FX Released, RKB-DVYEM5 Refunded oleh AI; semua tx di README. Video demo: https://www.youtube.com/watch?v=gYAv-NHmSQw
 
 - [x] **R-14 · README + docs submission (Inggris)**
   README baru: satu kalimat, masalah, solusi, **"Live on BSC Testnet"** (alamat terverifikasi + 1 tx contoh per status: Funded, Shipped, Released, Disputed, Refunded/Escalated), diagram mermaid (BLUEPRINT §4–§5), trust model, cara menjalankan lokal, env vars, test, known limitations yang jujur (Mock IDRX; **IDRX asli di BSC tidak punya permit → produksi butuh gas sponsorship MegaFuel/EIP-7702**; bukti di disk server; belum ada cash-out; status hukum rekber non-custodial belum pasti; AI bisa salah → eskalasi). Semua klaim faktual hanya dari BLUEPRINT §14, dengan link sumbernya. Salin draf teks submission dari BLUEPRINT §12 ke `docs/rekber-ai/SUBMISSION.md`, diperbarui dengan link nyata.

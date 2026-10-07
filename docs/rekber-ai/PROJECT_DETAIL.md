@@ -2,6 +2,7 @@
 
 **Rekber yang tidak bisa kabur membawa uangmu — a rekber that can't run off with your money.** The buyer's money is locked in a BNB Chain smart contract, and disputes are settled by an AI agent that settles on-chain with its own wallet. Nobody, including us, can run off with the money.
 
+- **Demo video (2:15):** https://www.youtube.com/watch?v=gYAv-NHmSQw
 - **Live app:** https://rekber-ai.vercel.app
 - **Contract:** [`RekberEscrow` 0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7](https://testnet.bscscan.com/address/0x7B864B0ca344d638E1aBB5323A4913Cd5BA1d3E7#code) (BSC Testnet, verified)
 - **Code:** https://github.com/whard2205/Rekber-ai
@@ -41,7 +42,9 @@ The agent runs on its own: it watches the contract, waits out the seller's reply
 
 - **Layer 1, before any AI call:** an unboxing photo already used in another deal is treated as likely recycled → escalate.
 - **Layer 2:** the vision model reads every photo against the seller's promised spec.
-- **Layer 3:** only a well-formed answer with confidence **≥ 0.85** settles automatically; anything else goes to a human arbiter.
+- **Layer 3:** the model only rates each side's evidence (strong or weak). Code applies the public rules to those ratings, and only a well-formed answer with confidence **≥ 0.85** settles automatically; anything else goes to a human arbiter.
+
+**Calibrated on real photos:** 9 of 9 correct verdicts across three consecutive rounds (refund, release against a buyer who lied about a scratch, and escalation for a likely courier swap), 4–6 seconds each. The first round scored 1 of 3; what we changed and why is documented in [`CALIBRATION.md`](https://github.com/whard2205/Rekber-ai/blob/main/docs/rekber-ai/CALIBRATION.md).
 
 Each verdict is hashed (`keccak256` of the written decision and reasons) and stored on-chain with the settlement, so anyone can recompute it and check it against the event log. The contract also limits the AI: it can refund, release or escalate, but it can never send funds anywhere else, and it cannot overrule a case once a human has it.
 
@@ -63,7 +66,7 @@ Each verdict is hashed (`keccak256` of the written decision and reasons) and sto
 - **Contract:** Solidity on BNB Smart Chain Testnet — EIP-712 signed offers and actions, EIP-2612 `permit` for gasless funding, relayer-submitted transactions.
 - **AI agent:** TypeScript daemon with a vision model, three-layer decision gate, crash-safe verdict resubmission.
 - **Web:** Next.js on Vercel, Upstash Redis for deals and evidence (photos stay off-chain; only their hashes go on-chain).
-- **Tests:** 61 contract tests, 16 agent tests, and a 5-scenario end-to-end run (direct confirm, AI refund, AI release after seller reply, escalation to a human, auto-release on timeout).
+- **Tests:** 61 contract tests, 17 agent tests, and a 5-scenario end-to-end run (direct confirm, AI refund, AI release after seller reply, escalation to a human, auto-release on timeout).
 
 ## What we're not claiming
 
