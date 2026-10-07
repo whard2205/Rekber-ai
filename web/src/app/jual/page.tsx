@@ -24,7 +24,7 @@ import {
   signatureDeadline,
 } from "@/lib/eip712";
 import { computeSpecHash, dealIdFor, type Spec } from "@/lib/spec";
-import { rupiah } from "@/lib/format";
+import { rupiah, shortAddress } from "@/lib/format";
 
 const OFFER_VALID_SECONDS = 30 * 24 * 60 * 60; // 30 hari (§3.3)
 
@@ -251,16 +251,14 @@ export default function JualPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="card">
-        <h1 className="card-title">Jualan aman, tanpa takut ditipu</h1>
-        <p className="card-meta">
-          Dana pembeli dikunci di kontrak pintar. Penjual menandatangani janji (spec + harga),
-          AI mengecek bukti, sengketa diputus AI/arbiter manusia.
+      <section className="hero" style={{ paddingTop: 8 }}>
+        <h1 style={{ fontSize: 26 }}>Buat transaksi</h1>
+        <p>
+          Tulis barangnya sejujur foto yang akan kamu kirim — itu yang nanti dicek AI kalau ada komplain.
+          Setelah ini kamu dapat link untuk dibagikan ke pembeli.
         </p>
-        <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-          Wallet Anda: <span style={{ fontFamily: "ui-monospace, monospace" }}>{wallet.address}</span>
-        </div>
-      </div>
+        <p className="mono" style={{ fontSize: 12, marginTop: 8 }}>Wallet penjual: {shortAddress(wallet.address)}</p>
+      </section>
 
       {error && <div className="alert alert-fail">{error}</div>}
 
