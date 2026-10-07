@@ -3,7 +3,7 @@ import { test } from "node:test";
 import os from "node:os";
 import path from "node:path";
 import { keccak256, toHex } from "viem";
-import { judgeDispute, buildEscalateVerdict } from "../src/judge.js";
+import { judgeDispute, buildEscalateVerdict, applyRules } from "../src/judge.js";
 import { PhotoRegistry } from "../src/registry.js";
 import type { AiProvider } from "../src/ai.js";
 import type { DealRecord, ImageInput } from "../src/types.js";
@@ -129,7 +129,8 @@ test("provider: decision REFUND confidence tinggi -> lolos gate", async () => {
         dealCodeInSellerPhoto: true,
         dealCodeInBuyerPhoto: true,
         problems: ["Barang tidak sesuai"],
-        decision: "REFUND",
+        sellerEvidence: "LEMAH",
+        buyerEvidence: "KUAT",
         confidence: 0.93,
         reasons: ["Barang di foto unboxing tidak sesuai deskripsi"],
       };
@@ -155,7 +156,8 @@ test("provider: confidence di bawah ambang -> ESCALATE walau decision tegas", as
         dealCodeInSellerPhoto: true,
         dealCodeInBuyerPhoto: true,
         problems: [],
-        decision: "RELEASE",
+        sellerEvidence: "KUAT",
+        buyerEvidence: "LEMAH",
         confidence: 0.5,
         reasons: ["Tampak sesuai tapi kurang yakin"],
       };
@@ -170,7 +172,7 @@ test("provider: confidence di bawah ambang -> ESCALATE walau decision tegas", as
   assert.equal(v.outcome, "ESCALATE");
 });
 
-test("provider: decision UNSURE -> ESCALATE", async () => {
+test("provider: bukti dua pihak sama-sama KUAT -> ESCALATE (aturan 6)", async () => {
   const deal = baseDeal();
   const provider: AiProvider = {
     name: "fake:v1",
@@ -180,8 +182,9 @@ test("provider: decision UNSURE -> ESCALATE", async () => {
         dealCodeInSellerPhoto: true,
         dealCodeInBuyerPhoto: true,
         problems: [],
-        decision: "UNSURE",
-        confidence: 0.6,
+        sellerEvidence: "KUAT",
+        buyerEvidence: "KUAT",
+        confidence: 0.95,
         reasons: ["Kemungkinan tertukar kurir"],
       };
     },
@@ -260,4 +263,11 @@ test("buildEscalateVerdict: commit outcome ESCALATE, dealCode sesuai", () => {
   assert.equal(v.commit.outcome, "ESCALATE");
   assert.equal(v.commit.dealCode, deal.dealCode);
   assert.equal(v.commit.dealId, deal.dealId);
+});
+
+test("applyRules: tabel aturan 4–6 diterapkan kode, bukan model", () => {
+  assert.equal(applyRules("KUAT", "LEMAH"), "RELEASE");
+  assert.equal(applyRules("LEMAH", "KUAT"), "REFUND");
+  assert.equal(applyRules("KUAT", "KUAT"), "UNSURE");
+  assert.equal(applyRules("LEMAH", "LEMAH"), "UNSURE");
 });

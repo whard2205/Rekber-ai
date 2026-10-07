@@ -314,9 +314,10 @@ Loop tiap `POLL_MS` (3000):
   `web/scripts/smoke-test.mjs` (pola MANDOR): membuat 4 deal lewat HTTP API memakai kunci yang di-generate di Node (tanda tangan typed data seperti browser), menjalankan 4 skenario R-09, dan satu skenario timeout via RPC `evm_increaseTime` + `releaseUnconfirmed`. Semua harus berakhir di status yang benar dan verdictHash cocok dengan event on-chain.
   *Cek:* `node scripts/smoke-test.mjs` → `SMOKE TEST LULUS (5 skenario)`.
 
-- [ ] **R-12 · Kalibrasi AI nyata (lokal, foto asli)**
+- [x] **R-12 · Kalibrasi AI nyata (lokal, foto asli)**
   🛑 Minta user memfoto: iPhone/HP + kode di kertas (packing baik), dus tertutup saja (packing buruk), batu bata + kode (unboxing), HP mulus + kode (unboxing jujur). Jalankan dengan `AI_PROVIDER=aimlapi` pada 3 kasus: batu bata → REFUND, pembeli bohong "lecet" padahal mulus → RELEASE, dua-duanya kuat bertentangan → ESCALATE. Perbaiki prompt sampai ketiganya konsisten 3× berturut-turut. Catat waktu putusan (target < 15 detik).
   *Cek:* tabel hasil di `docs/rekber-ai/CALIBRATION.md` (kasus, keputusan, confidence, waktu).
+  *Catatan (7 Okt):* 9/9 benar di 3 ronde berturut-turut (3,9–6,1 detik). Butuh 3 revisi prompt; perubahan terbesar: model hanya menilai bukti KUAT/LEMAH per pihak, keputusan diturunkan kode (`applyRules`). Kasus batu bata diganti botol lotion.
 
 - [ ] **R-13 · 🛑 CHECKPOINT USER — e2e di BSC testnet + hosting demo**
   Isi `.env` web/agent untuk chain 97 (user). Jalankan web + agent di satu mesin; ekspos dengan `cloudflared tunnel --url http://localhost:3001` (atau VPS terpisah milik user — **jangan** pakai container PAIO/sales). Uji dengan 2 HP sungguhan: satu transaksi sukses, satu sengketa batu bata.
