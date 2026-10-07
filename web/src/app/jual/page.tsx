@@ -17,7 +17,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { getOrCreateWallet } from "@/lib/wallet";
-import { resizeForUpload } from "@/lib/image";
+import { expectedEvidenceName, resizeForUpload } from "@/lib/image";
 import {
   OFFER_TYPES,
   rekberDomain,
@@ -85,7 +85,7 @@ export default function JualPage() {
   async function uploadPhoto(raw: File): Promise<Photo> {
     const resized = await resizeForUpload(raw);
     const { hash } = await hashFile(resized);
-    const expectedName = `${hash.slice(2)}.jpg`;
+    const expectedName = expectedEvidenceName(hash, resized);
 
     const form = new FormData();
     form.append("files", resized, resized.name);

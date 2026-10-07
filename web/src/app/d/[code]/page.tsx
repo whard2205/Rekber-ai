@@ -10,7 +10,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { keccak256, toHex, type Address, type Hex } from "viem";
 import { getOrCreateWallet } from "@/lib/wallet";
-import { resizeForUpload } from "@/lib/image";
+import { expectedEvidenceName, resizeForUpload } from "@/lib/image";
 import { rupiah, explorerTxUrl, shortAddress } from "@/lib/format";
 import { rekberDomain, permitDomain, FUND_TYPES, ACT_TYPES, PERMIT_TYPES, Action, signatureDeadline } from "@/lib/eip712";
 import { privateKeyToAccount } from "viem/accounts";
@@ -103,7 +103,7 @@ async function hashFile(file: File): Promise<Hex> {
 async function uploadEvidence(files: File[]): Promise<string[]> {
   const resized = await Promise.all(files.map((f) => resizeForUpload(f)));
   const hashes = await Promise.all(resized.map(hashFile));
-  const expected = resized.map((f, i) => `${hashes[i].slice(2)}.jpg`);
+  const expected = resized.map((f, i) => expectedEvidenceName(hashes[i], f));
   const form = new FormData();
   resized.forEach((f) => form.append("files", f, f.name));
   const res = await fetch("/api/evidence", { method: "POST", body: form });

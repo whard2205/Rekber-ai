@@ -39,3 +39,12 @@ export function resizeForUpload(file: File): Promise<File> {
     img.src = url;
   });
 }
+
+// Sama dengan EXT_BY_MIME di lib/evidence.ts (server-only, tidak bisa diimpor di sini).
+const EXT_BY_MIME: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+/** Nama yang akan dipakai server /api/evidence untuk foto ini: <keccak tanpa 0x>.<ext dari MIME>.
+ * Foto ≤2000px tidak di-resize, jadi bisa tetap PNG/WebP — jangan asumsikan ".jpg". */
+export function expectedEvidenceName(hash: string, file: File): string {
+  return `${hash.slice(2)}.${EXT_BY_MIME[file.type] ?? "jpg"}`;
+}
